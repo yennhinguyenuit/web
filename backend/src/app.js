@@ -6,6 +6,8 @@ const categoryRoutes = require("./routes/category.routes");
 const productRoutes = require("./routes/product.routes");
 const cartRoutes = require("./routes/cart.routes");
 const orderRoutes = require("./routes/order.routes");
+const accountRoutes = require("./routes/account.routes");
+
 const app = express();
 
 app.use(cors());
@@ -20,5 +22,6 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/account", accountRoutes);
 
 module.exports = app;
