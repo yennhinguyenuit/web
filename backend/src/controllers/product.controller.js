@@ -44,9 +44,34 @@ const getProducts = async (req, res) => {
       limit = 12,
     } = req.query;
 
-    const currentPage = Number(page) || 1;
-    const pageSize = Number(limit) || 12;
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const pageSize = Math.min(Math.max(Number(limit) || 12, 1), 50);
     const skip = (currentPage - 1) * pageSize;
+
+    const parsedMinPrice =
+      minPrice !== undefined && minPrice !== null && minPrice !== ""
+        ? Number(minPrice)
+        : null;
+
+    const parsedMaxPrice =
+      maxPrice !== undefined && maxPrice !== null && maxPrice !== ""
+        ? Number(maxPrice)
+        : null;
+
+    if (
+      (parsedMinPrice !== null && Number.isNaN(parsedMinPrice)) ||
+      (parsedMaxPrice !== null && Number.isNaN(parsedMaxPrice))
+    ) {
+      return sendError(res, "Khoảng giá không hợp lệ", 400);
+    }
+
+    if (
+      parsedMinPrice !== null &&
+      parsedMaxPrice !== null &&
+      parsedMinPrice > parsedMaxPrice
+    ) {
+      return sendError(res, "Khoảng giá không hợp lệ", 400);
+    }
 
     const where = {
       isActive: true,
@@ -78,10 +103,10 @@ const getProducts = async (req, res) => {
       };
     }
 
-    if (minPrice || maxPrice) {
+    if (parsedMinPrice !== null || parsedMaxPrice !== null) {
       where.price = {};
-      if (minPrice) where.price.gte = Number(minPrice);
-      if (maxPrice) where.price.lte = Number(maxPrice);
+      if (parsedMinPrice !== null) where.price.gte = parsedMinPrice;
+      if (parsedMaxPrice !== null) where.price.lte = parsedMaxPrice;
     }
 
     let orderBy = { createdAt: "desc" };
@@ -137,8 +162,11 @@ const getProductDetail = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const product = await prisma.product.findUnique({
-      where: { id },
+    const product = await prisma.product.findFirst({
+      where: {
+        id,
+        isActive: true,
+      },
       include: {
         category: true,
         images: {

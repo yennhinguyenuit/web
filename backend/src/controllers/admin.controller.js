@@ -1,6 +1,25 @@
 const prisma = require("../config/prisma");
 const { sendSuccess, sendError } = require("../utils/response");
 
+const ORDER_STATUSES = [
+  "pending",
+  "confirmed",
+  "shipping",
+  "delivered",
+  "cancelled",
+];
+
+const PAYMENT_STATUSES = [
+  "pending",
+  "paid",
+  "failed",
+  "refunded",
+];
+
+const generateTrackingNumber = () => {
+  return `TRK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+};
+
 const mapProduct = (product) => {
   return {
     id: product.id,
@@ -78,8 +97,33 @@ const createProduct = async (req, res) => {
       images = [],
     } = req.body;
 
-    if (!name || !slug || !price || !categoryId) {
+    if (!name || !slug || price === undefined || price === null || !categoryId) {
       return sendError(res, "Thiếu các trường bắt buộc", 400);
+    }
+
+    const parsedPrice = Number(price);
+    const parsedOriginalPrice =
+      originalPrice !== undefined && originalPrice !== null && originalPrice !== ""
+        ? Number(originalPrice)
+        : null;
+    const parsedStock =
+      stock !== undefined && stock !== null && stock !== ""
+        ? Number(stock)
+        : 0;
+
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      return sendError(res, "Giá sản phẩm không hợp lệ", 400);
+    }
+
+    if (
+      parsedOriginalPrice !== null &&
+      (Number.isNaN(parsedOriginalPrice) || parsedOriginalPrice < 0)
+    ) {
+      return sendError(res, "Giá gốc không hợp lệ", 400);
+    }
+
+    if (Number.isNaN(parsedStock) || parsedStock < 0) {
+      return sendError(res, "Tồn kho không hợp lệ", 400);
     }
 
     const category = await prisma.category.findUnique({
@@ -103,9 +147,9 @@ const createProduct = async (req, res) => {
         name,
         slug,
         description: description || null,
-        price,
-        originalPrice: originalPrice || null,
-        stock: Number(stock) || 0,
+        price: parsedPrice,
+        originalPrice: parsedOriginalPrice,
+        stock: parsedStock,
         badge: badge || null,
         image: image || null,
         categoryId,
@@ -184,6 +228,33 @@ const updateProduct = async (req, res) => {
       }
     }
 
+    if (categoryId && categoryId !== existingProduct.categoryId) {
+      const categoryExists = await prisma.category.findUnique({
+        where: { id: categoryId },
+      });
+
+      if (!categoryExists) {
+        return sendError(res, "Danh mục không tồn tại", 404);
+      }
+    }
+
+    if (price !== undefined && (Number.isNaN(Number(price)) || Number(price) < 0)) {
+      return sendError(res, "Giá sản phẩm không hợp lệ", 400);
+    }
+
+    if (
+      originalPrice !== undefined &&
+      originalPrice !== null &&
+      originalPrice !== "" &&
+      (Number.isNaN(Number(originalPrice)) || Number(originalPrice) < 0)
+    ) {
+      return sendError(res, "Giá gốc không hợp lệ", 400);
+    }
+
+    if (stock !== undefined && (Number.isNaN(Number(stock)) || Number(stock) < 0)) {
+      return sendError(res, "Tồn kho không hợp lệ", 400);
+    }
+
     const updatedProduct = await prisma.$transaction(async (tx) => {
       if (Array.isArray(images)) {
         await tx.productImage.deleteMany({
@@ -209,10 +280,12 @@ const updateProduct = async (req, res) => {
           name: name ?? existingProduct.name,
           slug: slug ?? existingProduct.slug,
           description: description ?? existingProduct.description,
-          price: price ?? existingProduct.price,
+          price: price !== undefined ? Number(price) : existingProduct.price,
           originalPrice:
             originalPrice !== undefined
-              ? originalPrice
+              ? (originalPrice === "" || originalPrice === null
+                  ? null
+                  : Number(originalPrice))
               : existingProduct.originalPrice,
           stock: stock !== undefined ? Number(stock) : existingProduct.stock,
           badge: badge !== undefined ? badge : existingProduct.badge,
@@ -285,11 +358,12 @@ const deleteProduct = async (req, res) => {
       return sendError(res, "Không tìm thấy sản phẩm", 404);
     }
 
-    await prisma.product.delete({
+    await prisma.product.update({
       where: { id },
+      data: { isActive: false },
     });
 
-    return sendSuccess(res, "Xóa sản phẩm thành công", null);
+    return sendSuccess(res, "Ẩn sản phẩm thành công", null);
   } catch (error) {
     console.error("Delete product error:", error);
     return sendError(res, "Lỗi server khi xóa sản phẩm", 500);
@@ -351,12 +425,29 @@ const updateOrderStatus = async (req, res) => {
       return sendError(res, "Không tìm thấy đơn hàng", 404);
     }
 
+    if (status && !ORDER_STATUSES.includes(status)) {
+      return sendError(res, "Trạng thái đơn hàng không hợp lệ", 400);
+    }
+
+    if (paymentStatus && !PAYMENT_STATUSES.includes(paymentStatus)) {
+      return sendError(res, "Trạng thái thanh toán không hợp lệ", 400);
+    }
+
+    const updateData = {
+      status: status ?? existingOrder.status,
+      paymentStatus: paymentStatus ?? existingOrder.paymentStatus,
+    };
+
+    if (
+      updateData.status === "shipping" &&
+      !existingOrder.trackingNumber
+    ) {
+      updateData.trackingNumber = generateTrackingNumber();
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: {
-        status: status ?? existingOrder.status,
-        paymentStatus: paymentStatus ?? existingOrder.paymentStatus,
-      },
+      data: updateData,
       include: {
         user: true,
         paymentMethod: true,
@@ -370,6 +461,7 @@ const updateOrderStatus = async (req, res) => {
       code: updatedOrder.code,
       status: updatedOrder.status,
       paymentStatus: updatedOrder.paymentStatus,
+      trackingNumber: updatedOrder.trackingNumber,
       updatedAt: updatedOrder.updatedAt,
     });
   } catch (error) {

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
+const bcrypt = require("bcryptjs");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -9,18 +10,45 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  await prisma.role.upsert({
+  // ===== ROLE =====
+  const adminRole = await prisma.role.upsert({
     where: { name: "admin" },
     update: {},
     create: { name: "admin" },
   });
 
-  await prisma.role.upsert({
+  const userRole = await prisma.role.upsert({
     where: { name: "user" },
     update: {},
     create: { name: "user" },
   });
 
+  // ===== USER =====
+  const passwordHash = await bcrypt.hash("123456", 10);
+
+  await prisma.user.upsert({
+    where: { email: "admin@example.com" },
+    update: {},
+    create: {
+      email: "admin@example.com",
+      passwordHash,
+      name: "Admin",
+      roleId: adminRole.id,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "user@example.com" },
+    update: {},
+    create: {
+      email: "user@example.com",
+      passwordHash,
+      name: "Test User",
+      roleId: userRole.id,
+    },
+  });
+
+  // ===== SHIPPING =====
   await prisma.shippingMethod.upsert({
     where: { code: "standard" },
     update: {},
@@ -29,7 +57,6 @@ async function main() {
       name: "Giao hàng tiêu chuẩn",
       price: 30000,
       estimatedDays: 3,
-      description: "Giao trong 3-5 ngày",
     },
   });
 
@@ -38,10 +65,9 @@ async function main() {
     update: {},
     create: {
       code: "express",
-      name: "Giao hàng nhanh",
+      name: "Giao nhanh",
       price: 50000,
       estimatedDays: 2,
-      description: "Giao trong 1-2 ngày",
     },
   });
 
@@ -53,17 +79,16 @@ async function main() {
       name: "Giao trong ngày",
       price: 80000,
       estimatedDays: 1,
-      description: "Giao trong ngày tại nội thành",
     },
   });
 
+  // ===== PAYMENT =====
   await prisma.paymentMethod.upsert({
     where: { code: "cod" },
     update: {},
     create: {
       code: "cod",
       name: "Thanh toán khi nhận hàng",
-      description: "Khách hàng trả tiền mặt khi nhận hàng",
     },
   });
 
@@ -73,7 +98,6 @@ async function main() {
     create: {
       code: "momo",
       name: "Ví MoMo",
-      description: "Thanh toán qua ví MoMo",
     },
   });
 
@@ -83,7 +107,6 @@ async function main() {
     create: {
       code: "zalopay",
       name: "ZaloPay",
-      description: "Thanh toán qua ZaloPay",
     },
   });
 
@@ -93,139 +116,98 @@ async function main() {
     create: {
       code: "card",
       name: "Thẻ ngân hàng",
-      description: "Thanh toán bằng thẻ ATM/Visa/MasterCard",
     },
   });
 
-  await prisma.paymentMethod.upsert({
-    where: { code: "qr" },
-    update: {},
-    create: {
-      code: "qr",
-      name: "QR Banking",
-      description: "Thanh toán bằng mã QR",
-    },
-  });
-    const fashionCategory = await prisma.category.upsert({
+  // ===== CATEGORY =====
+  const fashionCategory = await prisma.category.upsert({
     where: { slug: "thoi-trang" },
-    update: {
-      name: "Thời trang",
-      description: "Quần áo và phụ kiện thời trang",
-    },
+    update: {},
     create: {
       name: "Thời trang",
       slug: "thoi-trang",
-      description: "Quần áo và phụ kiện thời trang",
     },
   });
 
   const shoesCategory = await prisma.category.upsert({
     where: { slug: "giay-dep" },
-    update: {
-      name: "Giày dép",
-      description: "Giày thể thao, sandal, dép",
-    },
+    update: {},
     create: {
       name: "Giày dép",
       slug: "giay-dep",
-      description: "Giày thể thao, sandal, dép",
     },
   });
 
-  const accessoriesCategory = await prisma.category.upsert({
-    where: { slug: "phu-kien" },
-    update: {
-      name: "Phụ kiện",
-      description: "Túi xách, nón, thắt lưng, ví",
-    },
-    create: {
-      name: "Phụ kiện",
-      slug: "phu-kien",
-      description: "Túi xách, nón, thắt lưng, ví",
-    },
-  });
+  // ===== PRODUCT 1 =====
   await prisma.product.upsert({
-  where: { slug: "ao-thun-nam-cotton-premium" },
-  update: {},
-  create: {
-    name: "Áo thun nam cotton premium",
-    slug: "ao-thun-nam-cotton-premium",
-    description: "Áo thun nam cotton mềm mại",
-    price: "299000",
-    originalPrice: "399000",
-    stock: 120,
-    badge: "Sale 25%",
-    image: "https://placehold.co/600x800?text=Ao+Thun",
-    ratingAvg: 4.6,
-    reviewCount: 124,
-    isActive: true,
-    categoryId: fashionCategory.id,
-    images: {
-      create: [
-        { imageUrl: "https://placehold.co/600x800?text=Ao+Thun+1", sortOrder: 1 },
-        { imageUrl: "https://placehold.co/600x800?text=Ao+Thun+2", sortOrder: 2 },
-      ],
+    where: { slug: "ao-thun-nam-cotton-premium" },
+    update: {},
+    create: {
+      name: "Áo thun nam cotton premium",
+      slug: "ao-thun-nam-cotton-premium",
+      description: "Áo thun nam cotton mềm mại",
+      price: 299000,
+      originalPrice: 399000,
+      stock: 120,
+      badge: "Sale 25%",
+      image: "https://placehold.co/600x800?text=Ao+Thun",
+      ratingAvg: 4.6,
+      reviewCount: 124,
+      isActive: true,
+      categoryId: fashionCategory.id,
+      images: {
+        create: [
+          { imageUrl: "https://placehold.co/600x800?text=Ao+Thun+1", sortOrder: 1 },
+          { imageUrl: "https://placehold.co/600x800?text=Ao+Thun+2", sortOrder: 2 },
+        ],
+      },
+      colors: {
+        create: [{ colorName: "Đen" }, { colorName: "Trắng" }],
+      },
+      sizes: {
+        create: [{ sizeName: "S" }, { sizeName: "M" }, { sizeName: "L" }],
+      },
     },
-    colors: {
-      create: [
-        { colorName: "Đen" },
-        { colorName: "Trắng" },
-      ],
-    },
-    sizes: {
-      create: [
-        { sizeName: "S" },
-        { sizeName: "M" },
-        { sizeName: "L" },
-      ],
-    },
-  },
-});
+  });
 
-await prisma.product.upsert({
-  where: { slug: "giay-sneaker-basic-trang" },
-  update: {},
-  create: {
-    name: "Giày sneaker basic trắng",
-    slug: "giay-sneaker-basic-trang",
-    description: "Giày sneaker basic dễ phối đồ",
-    price: "699000",
-    originalPrice: "899000",
-    stock: 50,
-    badge: "Best Seller",
-    image: "https://placehold.co/600x800?text=Sneaker",
-    ratingAvg: 4.8,
-    reviewCount: 210,
-    isActive: true,
-    categoryId: shoesCategory.id,
-    images: {
-      create: [
-        { imageUrl: "https://placehold.co/600x800?text=Sneaker+1", sortOrder: 1 },
-        { imageUrl: "https://placehold.co/600x800?text=Sneaker+2", sortOrder: 2 },
-      ],
+  // ===== PRODUCT 2 =====
+  await prisma.product.upsert({
+    where: { slug: "giay-sneaker-basic-trang" },
+    update: {},
+    create: {
+      name: "Giày sneaker basic trắng",
+      slug: "giay-sneaker-basic-trang",
+      description: "Giày sneaker basic dễ phối đồ",
+      price: 699000,
+      originalPrice: 899000,
+      stock: 50,
+      badge: "Best Seller",
+      image: "https://placehold.co/600x800?text=Sneaker",
+      ratingAvg: 4.8,
+      reviewCount: 210,
+      isActive: true,
+      categoryId: shoesCategory.id,
+      images: {
+        create: [
+          { imageUrl: "https://placehold.co/600x800?text=Sneaker+1", sortOrder: 1 },
+          { imageUrl: "https://placehold.co/600x800?text=Sneaker+2", sortOrder: 2 },
+        ],
+      },
+      colors: {
+        create: [{ colorName: "Trắng" }, { colorName: "Đen" }],
+      },
+      sizes: {
+        create: [{ sizeName: "39" }, { sizeName: "40" }, { sizeName: "41" }],
+      },
     },
-    colors: {
-      create: [
-        { colorName: "Trắng" },
-        { colorName: "Đen" },
-      ],
-    },
-    sizes: {
-      create: [
-        { sizeName: "39" },
-        { sizeName: "40" },
-        { sizeName: "41" },
-      ],
-    },
-  },
-});
+  });
 
-  console.log("Seed data inserted successfully");
+  console.log("✅ Seed completed");
 }
 
 main()
   .catch((e) => {
-    console.error("Seed failed:", e);
+    console.error("❌ Seed failed:", e);
     process.exit(1);
   })
   .finally(async () => {

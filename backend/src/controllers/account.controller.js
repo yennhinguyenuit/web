@@ -1,6 +1,11 @@
 const prisma = require("../config/prisma");
 const { sendSuccess, sendError } = require("../utils/response");
 
+const buildDefaultAddressText = (addressObj) => {
+  if (!addressObj) return null;
+  return `${addressObj.address}, ${addressObj.ward}, ${addressObj.district}, ${addressObj.city}`;
+};
+
 const formatProfile = (user) => {
   return {
     id: user.id,
@@ -25,7 +30,11 @@ const getProfile = async (req, res) => {
       return sendError(res, "Không tìm thấy người dùng", 404);
     }
 
-    return sendSuccess(res, "Lấy thông tin tài khoản thành công", formatProfile(user));
+    return sendSuccess(
+      res,
+      "Lấy thông tin tài khoản thành công",
+      formatProfile(user)
+    );
   } catch (error) {
     console.error("Get profile error:", error);
     return sendError(res, "Lỗi server khi lấy thông tin tài khoản", 500);
@@ -34,19 +43,32 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
+    const currentUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { role: true },
+    });
+
+    if (!currentUser) {
+      return sendError(res, "Không tìm thấy người dùng", 404);
+    }
+
     const { name, phone, defaultAddress } = req.body;
 
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: {
-        name: name ?? req.user.name,
-        phone: phone ?? req.user.phone,
-        defaultAddress: defaultAddress ?? req.user.defaultAddress,
+        name: name ?? currentUser.name,
+        phone: phone ?? currentUser.phone,
+        defaultAddress: defaultAddress ?? currentUser.defaultAddress,
       },
       include: { role: true },
     });
 
-    return sendSuccess(res, "Cập nhật thông tin tài khoản thành công", formatProfile(user));
+    return sendSuccess(
+      res,
+      "Cập nhật thông tin tài khoản thành công",
+      formatProfile(user)
+    );
   } catch (error) {
     console.error("Update profile error:", error);
     return sendError(res, "Lỗi server khi cập nhật tài khoản", 500);
@@ -57,10 +79,7 @@ const getAddresses = async (req, res) => {
   try {
     const addresses = await prisma.address.findMany({
       where: { userId: req.user.id },
-      orderBy: [
-        { isDefault: "desc" },
-        { createdAt: "desc" },
-      ],
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     });
 
     return sendSuccess(res, "Lấy danh sách địa chỉ thành công", addresses);
@@ -72,28 +91,35 @@ const getAddresses = async (req, res) => {
 
 const createAddress = async (req, res) => {
   try {
-    const { name, phone, address, city, district, ward, isDefault = false } = req.body;
+    const {
+      name,
+      phone,
+      address,
+      city,
+      district,
+      ward,
+      isDefault = false,
+    } = req.body;
 
     if (!name || !phone || !address || !city || !district || !ward) {
       return sendError(res, "Vui lòng nhập đầy đủ thông tin địa chỉ", 400);
     }
 
     const createdAddress = await prisma.$transaction(async (tx) => {
-      if (isDefault) {
+      const addressCount = await tx.address.count({
+        where: { userId: req.user.id },
+      });
+
+      const shouldBeDefault = addressCount === 0 ? true : isDefault;
+
+      if (shouldBeDefault) {
         await tx.address.updateMany({
           where: { userId: req.user.id },
           data: { isDefault: false },
         });
-
-        await tx.user.update({
-          where: { id: req.user.id },
-          data: {
-            defaultAddress: `${address}, ${ward}, ${district}, ${city}`,
-          },
-        });
       }
 
-      return tx.address.create({
+      const newAddress = await tx.address.create({
         data: {
           userId: req.user.id,
           name,
@@ -102,9 +128,20 @@ const createAddress = async (req, res) => {
           city,
           district,
           ward,
-          isDefault,
+          isDefault: shouldBeDefault,
         },
       });
+
+      if (shouldBeDefault) {
+        await tx.user.update({
+          where: { id: req.user.id },
+          data: {
+            defaultAddress: buildDefaultAddressText(newAddress),
+          },
+        });
+      }
+
+      return newAddress;
     });
 
     return sendSuccess(res, "Tạo địa chỉ thành công", createdAddress, 201);
@@ -130,39 +167,52 @@ const updateAddress = async (req, res) => {
       return sendError(res, "Không tìm thấy địa chỉ", 404);
     }
 
+    if (existingAddress.isDefault && isDefault === false) {
+      return sendError(
+        res,
+        "Không thể bỏ mặc định của địa chỉ này. Hãy chọn địa chỉ khác làm mặc định trước.",
+        400
+      );
+    }
+
+    const finalData = {
+      name: name ?? existingAddress.name,
+      phone: phone ?? existingAddress.phone,
+      address: address ?? existingAddress.address,
+      city: city ?? existingAddress.city,
+      district: district ?? existingAddress.district,
+      ward: ward ?? existingAddress.ward,
+    };
+
     const updatedAddress = await prisma.$transaction(async (tx) => {
+      let finalIsDefault = existingAddress.isDefault;
+
       if (isDefault === true) {
         await tx.address.updateMany({
           where: { userId: req.user.id },
           data: { isDefault: false },
         });
+        finalIsDefault = true;
+      }
 
-        const finalAddress = address ?? existingAddress.address;
-        const finalWard = ward ?? existingAddress.ward;
-        const finalDistrict = district ?? existingAddress.district;
-        const finalCity = city ?? existingAddress.city;
+      const updated = await tx.address.update({
+        where: { id },
+        data: {
+          ...finalData,
+          isDefault: finalIsDefault,
+        },
+      });
 
+      if (updated.isDefault) {
         await tx.user.update({
           where: { id: req.user.id },
           data: {
-            defaultAddress: `${finalAddress}, ${finalWard}, ${finalDistrict}, ${finalCity}`,
+            defaultAddress: buildDefaultAddressText(updated),
           },
         });
       }
 
-      return tx.address.update({
-        where: { id },
-        data: {
-          name: name ?? existingAddress.name,
-          phone: phone ?? existingAddress.phone,
-          address: address ?? existingAddress.address,
-          city: city ?? existingAddress.city,
-          district: district ?? existingAddress.district,
-          ward: ward ?? existingAddress.ward,
-          isDefault:
-            typeof isDefault === "boolean" ? isDefault : existingAddress.isDefault,
-        },
-      });
+      return updated;
     });
 
     return sendSuccess(res, "Cập nhật địa chỉ thành công", updatedAddress);
@@ -193,10 +243,32 @@ const deleteAddress = async (req, res) => {
       });
 
       if (existingAddress.isDefault) {
-        await tx.user.update({
-          where: { id: req.user.id },
-          data: { defaultAddress: null },
+        const anotherAddress = await tx.address.findFirst({
+          where: {
+            userId: req.user.id,
+            id: { not: id },
+          },
+          orderBy: { createdAt: "desc" },
         });
+
+        if (anotherAddress) {
+          const newDefaultAddress = await tx.address.update({
+            where: { id: anotherAddress.id },
+            data: { isDefault: true },
+          });
+
+          await tx.user.update({
+            where: { id: req.user.id },
+            data: {
+              defaultAddress: buildDefaultAddressText(newDefaultAddress),
+            },
+          });
+        } else {
+          await tx.user.update({
+            where: { id: req.user.id },
+            data: { defaultAddress: null },
+          });
+        }
       }
     });
 

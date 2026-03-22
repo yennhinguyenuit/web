@@ -73,7 +73,6 @@ const formatOrderDetail = (order) => {
           city: order.address.city,
           district: order.address.district,
           ward: order.address.ward,
-          isDefault: order.address.isDefault,
         }
       : null,
     items: order.items.map((item) => ({
@@ -95,29 +94,43 @@ const formatOrderDetail = (order) => {
 const createOrder = async (req, res) => {
   try {
     const {
-      name,
-      phone,
-      address,
-      city,
-      district,
-      ward,
+      addressId,
+      shippingAddress,
+      saveAddress,
       shippingMethodCode,
       paymentMethodCode,
     } = req.body;
 
+    if (!shippingMethodCode || !paymentMethodCode) {
+      return sendError(
+        res,
+        "Thiếu phương thức giao hàng hoặc phương thức thanh toán",
+        400
+      );
+    }
+
+    if (!addressId && !shippingAddress) {
+      return sendError(
+        res,
+        "Vui lòng chọn địa chỉ đã lưu hoặc nhập địa chỉ giao hàng mới",
+        400
+      );
+    }
+
     if (
-      !name ||
-      !phone ||
-      !address ||
-      !city ||
-      !district ||
-      !ward ||
-      !shippingMethodCode ||
-      !paymentMethodCode
+      shippingAddress &&
+      (
+        !shippingAddress.name ||
+        !shippingAddress.phone ||
+        !shippingAddress.address ||
+        !shippingAddress.city ||
+        !shippingAddress.district ||
+        !shippingAddress.ward
+      )
     ) {
       return sendError(
         res,
-        "Vui lòng nhập đầy đủ thông tin giao hàng và phương thức thanh toán",
+        "Vui lòng nhập đầy đủ thông tin địa chỉ giao hàng",
         400
       );
     }
@@ -153,10 +166,44 @@ const createOrder = async (req, res) => {
       return sendError(res, "Phương thức thanh toán không hợp lệ", 400);
     }
 
+    let finalAddressData;
+
+    if (addressId) {
+      const existingAddress = await prisma.address.findFirst({
+        where: {
+          id: addressId,
+          userId: req.user.id,
+        },
+      });
+
+      if (!existingAddress) {
+        return sendError(res, "Địa chỉ không tồn tại", 404);
+      }
+
+      finalAddressData = {
+        name: existingAddress.name,
+        phone: existingAddress.phone,
+        address: existingAddress.address,
+        city: existingAddress.city,
+        district: existingAddress.district,
+        ward: existingAddress.ward,
+      };
+    } else {
+      finalAddressData = {
+        name: shippingAddress.name,
+        phone: shippingAddress.phone,
+        address: shippingAddress.address,
+        city: shippingAddress.city,
+        district: shippingAddress.district,
+        ward: shippingAddress.ward,
+      };
+    }
+
     const subtotal = cart.items.reduce(
       (sum, item) => sum + Number(item.unitPrice) * item.quantity,
       0
     );
+
     const shippingFee = Number(shippingMethod.price);
     const discount = 0;
     const total = subtotal + shippingFee - discount;
@@ -176,24 +223,29 @@ const createOrder = async (req, res) => {
         }
       }
 
-      const createdAddress = await tx.address.create({
-        data: {
-          userId: req.user.id,
-          name,
-          phone,
-          address,
-          city,
-          district,
-          ward,
-          isDefault: false,
-        },
+      const createdOrderAddress = await tx.orderAddress.create({
+        data: finalAddressData,
       });
+
+      if (!addressId && saveAddress === true) {
+        const addressCount = await tx.address.count({
+          where: { userId: req.user.id },
+        });
+
+        await tx.address.create({
+          data: {
+            userId: req.user.id,
+            ...finalAddressData,
+            isDefault: addressCount === 0,
+          },
+        });
+      }
 
       const createdOrder = await tx.order.create({
         data: {
           code: generateOrderCode(),
           userId: req.user.id,
-          addressId: createdAddress.id,
+          addressId: createdOrderAddress.id,
           shippingMethodId: shippingMethod.id,
           paymentMethodId: paymentMethod.id,
           subtotal,
@@ -201,22 +253,18 @@ const createOrder = async (req, res) => {
           discount,
           total,
           status: "pending",
-          paymentStatus: paymentMethod.code === "cod" ? "unpaid" : "pending",
-          trackingNumber: generateTrackingNumber(),
+          paymentStatus: "pending",
+          trackingNumber: null,
         },
       });
 
       for (const item of cart.items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-        });
-
         await tx.orderItem.create({
           data: {
             orderId: createdOrder.id,
             productId: item.productId,
-            productName: product.name,
-            productImage: product.image,
+            productName: item.product.name,
+            productImage: item.product.image,
             unitPrice: item.unitPrice,
             quantity: item.quantity,
             color: item.color,
@@ -249,7 +297,12 @@ const createOrder = async (req, res) => {
       });
     });
 
-    return sendSuccess(res, "Tạo đơn hàng thành công", formatOrderDetail(order), 201);
+    return sendSuccess(
+      res,
+      "Tạo đơn hàng thành công",
+      formatOrderDetail(order),
+      201
+    );
   } catch (error) {
     console.error("Create order error:", error);
     return sendError(res, error.message || "Lỗi server khi tạo đơn hàng", 500);
