@@ -1,0 +1,82 @@
+.detail-container {
+  padding: 40px;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.detail-card {
+  display: flex;
+  gap: 40px;
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  max-width: 1000px;
+  margin: auto;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+/* IMAGE */
+.detail-image img {
+  width: 400px;
+  height: 400px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+/* INFO */
+.detail-info {
+  flex: 1;
+}
+
+.detail-info h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.price {
+  color: #e53935;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.desc {
+  color: #555;
+  margin-bottom: 30px;
+}
+
+/* BUTTON */
+.actions {
+  display: flex;
+  gap: 15px;
+}
+
+.btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn.add {
+  background: #e53935;
+  color: white;
+}
+
+.btn.back {
+  background: #ddd;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .detail-card {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .detail-image img {
+    width: 100%;
+    height: auto;
+  }
+}
