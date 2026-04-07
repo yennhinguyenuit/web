@@ -1,12 +1,22 @@
+const crypto = require("crypto");
 const prisma = require("../config/prisma");
 const { sendSuccess, sendError } = require("../utils/response");
+const { createError, isAppError } = require("../utils/app-error");
+const { validateCouponForCheckout } = require("../utils/coupon");
+const {
+  BANK_TRANSFER_CODE,
+  generatePaymentTransactionCode,
+  mapPaymentTransaction,
+  mapPaymentMethod,
+  createBankTransferIntentData,
+  isBankTransferMethod,
+  isPayOSMethod,
+  buildBankTransferPaymentPayload,
+  buildPayOSPaymentPayload,
+} = require("../utils/payment");
 
 const generateOrderCode = () => {
-  return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-};
-
-const generateTrackingNumber = () => {
-  return `TRK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  return `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 };
 
 const formatOrderListItem = (order) => {
@@ -17,15 +27,10 @@ const formatOrderListItem = (order) => {
     subtotal: Number(order.subtotal),
     shippingFee: Number(order.shippingFee),
     discount: Number(order.discount),
+    couponCode: order.couponCode,
     status: order.status,
     paymentStatus: order.paymentStatus,
-    paymentMethod: order.paymentMethod
-      ? {
-          id: order.paymentMethod.id,
-          code: order.paymentMethod.code,
-          name: order.paymentMethod.name,
-        }
-      : null,
+    paymentMethod: order.paymentMethod ? mapPaymentMethod(order.paymentMethod) : null,
     shippingMethod: order.shippingMethod
       ? {
           id: order.shippingMethod.id,
@@ -34,8 +39,35 @@ const formatOrderListItem = (order) => {
         }
       : null,
     itemCount: order.items.length,
+    latestTransaction: order.transactions?.[0]
+      ? mapPaymentTransaction(order.transactions[0])
+      : null,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
+  };
+};
+
+const buildOrderPaymentInfo = (order) => {
+  const latestTransaction = order.transactions?.[0] || null;
+
+  if (!order.paymentMethod?.isOnline) {
+    return {
+      requiresAction: false,
+      latestTransaction: latestTransaction ? mapPaymentTransaction(latestTransaction) : null,
+    };
+  }
+
+  if (isBankTransferMethod(order.paymentMethod) && latestTransaction) {
+    return buildBankTransferPaymentPayload(latestTransaction, order);
+  }
+
+  if (isPayOSMethod(order.paymentMethod) && latestTransaction) {
+    return buildPayOSPaymentPayload(latestTransaction, order);
+  }
+
+  return {
+    requiresAction: order.paymentStatus !== "paid",
+    latestTransaction: latestTransaction ? mapPaymentTransaction(latestTransaction) : null,
   };
 };
 
@@ -47,21 +79,26 @@ const formatOrderDetail = (order) => {
     shippingFee: Number(order.shippingFee),
     discount: Number(order.discount),
     total: Number(order.total),
+    coupon: order.coupon
+      ? {
+          id: order.coupon.id,
+          code: order.coupon.code,
+          name: order.coupon.name,
+        }
+      : order.couponCode
+        ? { code: order.couponCode }
+        : null,
     status: order.status,
     paymentStatus: order.paymentStatus,
     trackingNumber: order.trackingNumber,
-    paymentMethod: order.paymentMethod
-      ? {
-          id: order.paymentMethod.id,
-          code: order.paymentMethod.code,
-          name: order.paymentMethod.name,
-        }
-      : null,
+    paymentMethod: order.paymentMethod ? mapPaymentMethod(order.paymentMethod) : null,
     shippingMethod: order.shippingMethod
       ? {
           id: order.shippingMethod.id,
           code: order.shippingMethod.code,
           name: order.shippingMethod.name,
+          price: Number(order.shippingMethod.price),
+          estimatedDays: order.shippingMethod.estimatedDays,
         }
       : null,
     shippingAddress: order.address
@@ -82,12 +119,74 @@ const formatOrderDetail = (order) => {
       productImage: item.productImage,
       unitPrice: Number(item.unitPrice),
       quantity: item.quantity,
-      color: item.color,
-      size: item.size,
+      color: item.color || null,
+      size: item.size || null,
       subTotal: Number(item.unitPrice) * item.quantity,
     })),
+    payment: buildOrderPaymentInfo(order),
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
+  };
+};
+
+const normalizeShippingAddress = (shippingAddress) => {
+  if (!shippingAddress) return null;
+
+  const finalAddressData = {
+    name: shippingAddress.name,
+    phone: shippingAddress.phone,
+    address: shippingAddress.address,
+    city: shippingAddress.city,
+    district: shippingAddress.district,
+    ward: shippingAddress.ward,
+  };
+
+  for (const [key, value] of Object.entries(finalAddressData)) {
+    if (!value || !String(value).trim()) {
+      throw createError("Vui lòng nhập đầy đủ thông tin địa chỉ giao hàng", 400, { field: key });
+    }
+
+    finalAddressData[key] = String(value).trim();
+  }
+
+  return finalAddressData;
+};
+
+const buildOnlineTransactionData = ({ paymentMethod, order, total }) => {
+  if (!paymentMethod.isOnline) {
+    return null;
+  }
+
+  if (isPayOSMethod(paymentMethod)) {
+    return null;
+  }
+
+  if (!isBankTransferMethod(paymentMethod)) {
+    throw createError(
+      "Hiện backend chỉ bật thanh toán payOS hoặc quét QR chuyển khoản ngân hàng.",
+      400
+    );
+  }
+
+  const transactionCode = generatePaymentTransactionCode();
+  const intent = createBankTransferIntentData({
+    order,
+    transactionCode,
+    amount: total,
+  });
+
+  return {
+    transactionCode,
+    provider: BANK_TRANSFER_CODE,
+    amount: total,
+    status: "pending",
+    paymentUrl: intent.paymentUrl,
+    qrImageUrl: intent.qrImageUrl,
+    qrPayload: intent.qrPayload,
+    transferContent: intent.transferContent,
+    expiresAt: intent.expiresAt,
+    note: "QR chuyển khoản được tạo cùng lúc với đơn hàng",
+    providerPayload: intent.providerPayload,
   };
 };
 
@@ -99,6 +198,7 @@ const createOrder = async (req, res) => {
       saveAddress,
       shippingMethodCode,
       paymentMethodCode,
+      couponCode,
     } = req.body;
 
     if (!shippingMethodCode || !paymentMethodCode) {
@@ -117,52 +217,20 @@ const createOrder = async (req, res) => {
       );
     }
 
-    if (
-      shippingAddress &&
-      (
-        !shippingAddress.name ||
-        !shippingAddress.phone ||
-        !shippingAddress.address ||
-        !shippingAddress.city ||
-        !shippingAddress.district ||
-        !shippingAddress.ward
-      )
-    ) {
-      return sendError(
-        res,
-        "Vui lòng nhập đầy đủ thông tin địa chỉ giao hàng",
-        400
-      );
-    }
-
-    const cart = await prisma.cart.findUnique({
-      where: { userId: req.user.id },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    });
-
-    if (!cart || cart.items.length === 0) {
-      return sendError(res, "Giỏ hàng đang trống", 400);
-    }
-
-    const shippingMethod = await prisma.shippingMethod.findUnique({
-      where: { code: shippingMethodCode },
-    });
+    const [shippingMethod, paymentMethod] = await Promise.all([
+      prisma.shippingMethod.findUnique({
+        where: { code: shippingMethodCode },
+      }),
+      prisma.paymentMethod.findUnique({
+        where: { code: paymentMethodCode },
+      }),
+    ]);
 
     if (!shippingMethod) {
       return sendError(res, "Phương thức vận chuyển không hợp lệ", 400);
     }
 
-    const paymentMethod = await prisma.paymentMethod.findUnique({
-      where: { code: paymentMethodCode },
-    });
-
-    if (!paymentMethod) {
+    if (!paymentMethod || !paymentMethod.isEnabled) {
       return sendError(res, "Phương thức thanh toán không hợp lệ", 400);
     }
 
@@ -189,39 +257,40 @@ const createOrder = async (req, res) => {
         ward: existingAddress.ward,
       };
     } else {
-      finalAddressData = {
-        name: shippingAddress.name,
-        phone: shippingAddress.phone,
-        address: shippingAddress.address,
-        city: shippingAddress.city,
-        district: shippingAddress.district,
-        ward: shippingAddress.ward,
-      };
+      finalAddressData = normalizeShippingAddress(shippingAddress);
     }
 
-    const subtotal = cart.items.reduce(
-      (sum, item) => sum + Number(item.unitPrice) * item.quantity,
-      0
-    );
-
     const shippingFee = Number(shippingMethod.price);
-    const discount = 0;
-    const total = subtotal + shippingFee - discount;
 
     const order = await prisma.$transaction(async (tx) => {
-      for (const item of cart.items) {
-        const product = await tx.product.findUnique({
-          where: { id: item.productId },
-        });
+      const cart = await tx.cart.findUnique({
+        where: { userId: req.user.id },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      });
 
-        if (!product || !product.isActive) {
-          throw new Error(`Sản phẩm không tồn tại: ${item.productId}`);
-        }
-
-        if (product.stock < item.quantity) {
-          throw new Error(`Sản phẩm "${product.name}" không đủ tồn kho`);
-        }
+      if (!cart || cart.items.length === 0) {
+        throw createError("Giỏ hàng đang trống", 400);
       }
+
+      const subtotal = cart.items.reduce(
+        (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+        0
+      );
+
+      const { coupon, discount } = await validateCouponForCheckout({
+        prisma: tx,
+        couponCode,
+        userId: req.user.id,
+        subtotal,
+      });
+
+      const total = subtotal + shippingFee - discount;
 
       const createdOrderAddress = await tx.orderAddress.create({
         data: finalAddressData,
@@ -241,6 +310,30 @@ const createOrder = async (req, res) => {
         });
       }
 
+      for (const item of cart.items) {
+        const updated = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            isActive: true,
+            stock: {
+              gte: item.quantity,
+            },
+          },
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
+        });
+
+        if (updated.count === 0) {
+          throw createError(
+            `Sản phẩm "${item.product.name}" không đủ tồn kho hoặc đã bị ẩn`,
+            400
+          );
+        }
+      }
+
       const createdOrder = await tx.order.create({
         data: {
           code: generateOrderCode(),
@@ -248,12 +341,14 @@ const createOrder = async (req, res) => {
           addressId: createdOrderAddress.id,
           shippingMethodId: shippingMethod.id,
           paymentMethodId: paymentMethod.id,
+          couponId: coupon?.id || null,
+          couponCode: coupon?.code || null,
           subtotal,
           shippingFee,
           discount,
           total,
           status: "pending",
-          paymentStatus: "pending",
+          paymentStatus: paymentMethod.isOnline ? "pending" : "unpaid",
           trackingNumber: null,
         },
       });
@@ -267,17 +362,63 @@ const createOrder = async (req, res) => {
             productImage: item.product.image,
             unitPrice: item.unitPrice,
             quantity: item.quantity,
-            color: item.color,
-            size: item.size,
+            color: item.color || null,
+            size: item.size || null,
+          },
+        });
+      }
+
+      if (coupon) {
+        const usedCountByUser = await tx.couponUsage.count({
+          where: {
+            couponId: coupon.id,
+            userId: req.user.id,
           },
         });
 
-        await tx.product.update({
-          where: { id: item.productId },
+        if (coupon.perUserLimit && usedCountByUser >= coupon.perUserLimit) {
+          throw createError("Bạn đã sử dụng hết lượt cho mã giảm giá này", 400);
+        }
+
+        const updatedCoupon = await tx.coupon.updateMany({
+          where: {
+            id: coupon.id,
+            ...(coupon.usageLimit !== null && coupon.usageLimit !== undefined
+              ? { usedCount: { lt: coupon.usageLimit } }
+              : {}),
+          },
           data: {
-            stock: {
-              decrement: item.quantity,
+            usedCount: {
+              increment: 1,
             },
+          },
+        });
+
+        if (updatedCoupon.count === 0) {
+          throw createError("Mã giảm giá đã hết lượt sử dụng", 400);
+        }
+
+        await tx.couponUsage.create({
+          data: {
+            couponId: coupon.id,
+            userId: req.user.id,
+            orderId: createdOrder.id,
+          },
+        });
+      }
+
+      const onlineTransactionData = buildOnlineTransactionData({
+        paymentMethod,
+        order: createdOrder,
+        total,
+      });
+
+      if (onlineTransactionData) {
+        await tx.paymentTransaction.create({
+          data: {
+            orderId: createdOrder.id,
+            paymentMethodId: paymentMethod.id,
+            ...onlineTransactionData,
           },
         });
       }
@@ -292,7 +433,11 @@ const createOrder = async (req, res) => {
           address: true,
           paymentMethod: true,
           shippingMethod: true,
+          coupon: true,
           items: true,
+          transactions: {
+            orderBy: { createdAt: "desc" },
+          },
         },
       });
     });
@@ -305,6 +450,9 @@ const createOrder = async (req, res) => {
     );
   } catch (error) {
     console.error("Create order error:", error);
+    if (isAppError(error)) {
+      return sendError(res, error.message, error.statusCode);
+    }
     return sendError(res, error.message || "Lỗi server khi tạo đơn hàng", 500);
   }
 };
@@ -319,6 +467,10 @@ const getMyOrders = async (req, res) => {
         items: true,
         paymentMethod: true,
         shippingMethod: true,
+        transactions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -349,7 +501,11 @@ const getOrderDetail = async (req, res) => {
         address: true,
         paymentMethod: true,
         shippingMethod: true,
+        coupon: true,
         items: true,
+        transactions: {
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 

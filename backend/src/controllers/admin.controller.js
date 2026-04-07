@@ -10,9 +10,11 @@ const ORDER_STATUSES = [
 ];
 
 const PAYMENT_STATUSES = [
+  "unpaid",
   "pending",
   "paid",
   "failed",
+  "expired",
   "refunded",
 ];
 
@@ -419,6 +421,7 @@ const updateOrderStatus = async (req, res) => {
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
+      include: { paymentMethod: true },
     });
 
     if (!existingOrder) {
@@ -437,6 +440,15 @@ const updateOrderStatus = async (req, res) => {
       status: status ?? existingOrder.status,
       paymentStatus: paymentStatus ?? existingOrder.paymentStatus,
     };
+
+    if (
+      !paymentStatus &&
+      updateData.status === "delivered" &&
+      existingOrder.paymentMethod?.code === "cod" &&
+      ["pending", "unpaid"].includes(existingOrder.paymentStatus)
+    ) {
+      updateData.paymentStatus = "paid";
+    }
 
     if (
       updateData.status === "shipping" &&

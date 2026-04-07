@@ -12,6 +12,12 @@ const {
   updateOrderStatus,
   getAdminDashboard,
 } = require("../controllers/admin.controller");
+const {
+  getAdminCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
+} = require("../controllers/coupon.controller");
 
 router.use(authMiddleware);
 router.use(roleMiddleware("admin"));
@@ -25,5 +31,10 @@ router.delete("/products/:id", deleteProduct);
 
 router.get("/orders", getAdminOrders);
 router.patch("/orders/:id/status", updateOrderStatus);
+
+router.get("/coupons", getAdminCoupons);
+router.post("/coupons", createCoupon);
+router.patch("/coupons/:id", updateCoupon);
+router.delete("/coupons/:id", deleteCoupon);
 
 module.exports = router;

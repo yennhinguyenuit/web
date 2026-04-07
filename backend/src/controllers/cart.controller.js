@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { sendSuccess, sendError } = require("../utils/response");
+const { createError, isAppError } = require("../utils/app-error");
 
 const formatCart = (cart) => {
   const items = cart.items.map((item) => {
@@ -17,10 +18,11 @@ const formatCart = (cart) => {
         (item.product.images[0] ? item.product.images[0].imageUrl : null),
       price: unitPrice,
       quantity,
-      color: item.color,
-      size: item.size,
+      color: item.color || null,
+      size: item.size || null,
       stock: item.product.stock,
       subTotal,
+      isActive: item.product.isActive,
     };
   });
 
@@ -35,25 +37,27 @@ const formatCart = (cart) => {
   };
 };
 
-const getOrCreateCart = async (userId) => {
-  let cart = await prisma.cart.findUnique({
-    where: { userId },
+const cartInclude = {
+  items: {
     include: {
-      items: {
+      product: {
         include: {
-          product: {
-            include: {
-              images: {
-                orderBy: { sortOrder: "asc" },
-              },
-            },
+          images: {
+            orderBy: { sortOrder: "asc" },
           },
-        },
-        orderBy: {
-          createdAt: "desc",
         },
       },
     },
+    orderBy: {
+      createdAt: "desc",
+    },
+  },
+};
+
+const getOrCreateCart = async (userId) => {
+  let cart = await prisma.cart.findUnique({
+    where: { userId },
+    include: cartInclude,
   });
 
   if (!cart) {
@@ -61,19 +65,7 @@ const getOrCreateCart = async (userId) => {
       data: {
         userId,
       },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                images: {
-                  orderBy: { sortOrder: "asc" },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: cartInclude,
     });
   }
 
@@ -93,13 +85,15 @@ const getCart = async (req, res) => {
 const addCartItem = async (req, res) => {
   try {
     const { productId, quantity = 1, color = null, size = null } = req.body;
+    const normalizedColor = color ? String(color).trim() : "";
+    const normalizedSize = size ? String(size).trim() : "";
 
     if (!productId) {
       return sendError(res, "Thiếu productId", 400);
     }
 
     const parsedQuantity = Number(quantity);
-    if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
       return sendError(res, "Số lượng không hợp lệ", 400);
     }
 
@@ -130,8 +124,8 @@ const addCartItem = async (req, res) => {
         where: {
           cartId: cart.id,
           productId,
-          color,
-          size,
+          color: normalizedColor,
+          size: normalizedSize,
         },
       });
 
@@ -139,7 +133,7 @@ const addCartItem = async (req, res) => {
         const newQuantity = existingItem.quantity + parsedQuantity;
 
         if (newQuantity > product.stock) {
-          throw new Error("Số lượng vượt quá tồn kho");
+          throw createError("Số lượng vượt quá tồn kho", 400);
         }
 
         await tx.cartItem.update({
@@ -154,8 +148,8 @@ const addCartItem = async (req, res) => {
             cartId: cart.id,
             productId,
             quantity: parsedQuantity,
-            color,
-            size,
+            color: normalizedColor,
+            size: normalizedSize,
             unitPrice: product.price,
           },
         });
@@ -163,22 +157,7 @@ const addCartItem = async (req, res) => {
 
       return tx.cart.findUnique({
         where: { id: cart.id },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: {
-                  images: {
-                    orderBy: { sortOrder: "asc" },
-                  },
-                },
-              },
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-          },
-        },
+        include: cartInclude,
       });
     });
 
@@ -189,7 +168,10 @@ const addCartItem = async (req, res) => {
     );
   } catch (error) {
     console.error("Add cart item error:", error);
-    return sendError(res, error.message || "Lỗi server khi thêm vào giỏ hàng", 500);
+    if (isAppError(error)) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    return sendError(res, "Lỗi server khi thêm vào giỏ hàng", 500);
   }
 };
 
@@ -199,7 +181,7 @@ const updateCartItem = async (req, res) => {
     const { quantity } = req.body;
 
     const parsedQuantity = Number(quantity);
-    if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
+    if (!Number.isInteger(parsedQuantity) || parsedQuantity <= 0) {
       return sendError(res, "Số lượng không hợp lệ", 400);
     }
 
@@ -225,6 +207,10 @@ const updateCartItem = async (req, res) => {
       return sendError(res, "Không tìm thấy sản phẩm trong giỏ hàng", 404);
     }
 
+    if (!item.product.isActive) {
+      return sendError(res, "Sản phẩm này hiện không còn khả dụng", 400);
+    }
+
     if (parsedQuantity > item.product.stock) {
       return sendError(res, "Số lượng vượt quá tồn kho", 400);
     }
@@ -238,22 +224,7 @@ const updateCartItem = async (req, res) => {
 
     const updatedCart = await prisma.cart.findUnique({
       where: { id: cart.id },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                images: {
-                  orderBy: { sortOrder: "asc" },
-                },
-              },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-      },
+      include: cartInclude,
     });
 
     return sendSuccess(
@@ -296,22 +267,7 @@ const removeCartItem = async (req, res) => {
 
     const updatedCart = await prisma.cart.findUnique({
       where: { id: cart.id },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                images: {
-                  orderBy: { sortOrder: "asc" },
-                },
-              },
-            },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
-      },
+      include: cartInclude,
     });
 
     return sendSuccess(
@@ -347,19 +303,7 @@ const clearCart = async (req, res) => {
 
     const updatedCart = await prisma.cart.findUnique({
       where: { id: cart.id },
-      include: {
-        items: {
-          include: {
-            product: {
-              include: {
-                images: {
-                  orderBy: { sortOrder: "asc" },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: cartInclude,
     });
 
     return sendSuccess(

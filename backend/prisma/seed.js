@@ -10,7 +10,6 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // ===== ROLE =====
   const adminRole = await prisma.role.upsert({
     where: { name: "admin" },
     update: {},
@@ -23,7 +22,6 @@ async function main() {
     create: { name: "user" },
   });
 
-  // ===== USER =====
   const passwordHash = await bcrypt.hash("123456", 10);
 
   await prisma.user.upsert({
@@ -48,78 +46,150 @@ async function main() {
     },
   });
 
-  // ===== SHIPPING =====
   await prisma.shippingMethod.upsert({
     where: { code: "standard" },
-    update: {},
+    update: {
+      name: "Giao hàng tiêu chuẩn",
+      price: 30000,
+      estimatedDays: 3,
+      description: "Giao trong 2-4 ngày làm việc",
+    },
     create: {
       code: "standard",
       name: "Giao hàng tiêu chuẩn",
       price: 30000,
       estimatedDays: 3,
+      description: "Giao trong 2-4 ngày làm việc",
     },
   });
 
   await prisma.shippingMethod.upsert({
     where: { code: "express" },
-    update: {},
+    update: {
+      name: "Giao nhanh",
+      price: 50000,
+      estimatedDays: 2,
+      description: "Ưu tiên xử lý và giao nhanh",
+    },
     create: {
       code: "express",
       name: "Giao nhanh",
       price: 50000,
       estimatedDays: 2,
+      description: "Ưu tiên xử lý và giao nhanh",
     },
   });
 
   await prisma.shippingMethod.upsert({
     where: { code: "same-day" },
-    update: {},
+    update: {
+      name: "Giao trong ngày",
+      price: 80000,
+      estimatedDays: 1,
+      description: "Áp dụng cho nội thành đủ điều kiện",
+    },
     create: {
       code: "same-day",
       name: "Giao trong ngày",
       price: 80000,
       estimatedDays: 1,
+      description: "Áp dụng cho nội thành đủ điều kiện",
     },
   });
 
-  // ===== PAYMENT =====
-  await prisma.paymentMethod.upsert({
-    where: { code: "cod" },
-    update: {},
-    create: {
+  const paymentMethods = [
+    {
       code: "cod",
       name: "Thanh toán khi nhận hàng",
+      description: "Khách thanh toán khi nhận hàng",
+      isOnline: false,
+      isEnabled: true,
     },
-  });
-
-  await prisma.paymentMethod.upsert({
-    where: { code: "momo" },
-    update: {},
-    create: {
+    {
+      code: "bank_transfer",
+      name: "Chuyển khoản ngân hàng (VietQR)",
+      description: "Quét mã VietQR bằng app ngân hàng và tự động đối soát qua webhook",
+      isOnline: true,
+      isEnabled: true,
+    },
+    {
+      code: "payos",
+      name: "Thanh toán online qua payOS",
+      description: "Tạo link thanh toán payOS, redirect sang checkoutUrl và xác nhận đơn bằng webhook",
+      isOnline: true,
+      isEnabled: true,
+    },
+    {
       code: "momo",
       name: "Ví MoMo",
+      description: "Chưa kích hoạt trong backend này",
+      isOnline: true,
+      isEnabled: false,
     },
-  });
-
-  await prisma.paymentMethod.upsert({
-    where: { code: "zalopay" },
-    update: {},
-    create: {
+    {
       code: "zalopay",
       name: "ZaloPay",
+      description: "Chưa kích hoạt trong backend này",
+      isOnline: true,
+      isEnabled: false,
     },
-  });
-
-  await prisma.paymentMethod.upsert({
-    where: { code: "card" },
-    update: {},
-    create: {
+    {
       code: "card",
       name: "Thẻ ngân hàng",
+      description: "Chưa kích hoạt trong backend này",
+      isOnline: true,
+      isEnabled: false,
+    },
+  ];
+
+  for (const method of paymentMethods) {
+    await prisma.paymentMethod.upsert({
+      where: { code: method.code },
+      update: {
+        name: method.name,
+        description: method.description,
+        isOnline: method.isOnline,
+        isEnabled: method.isEnabled,
+      },
+      create: {
+        code: method.code,
+        name: method.name,
+        description: method.description,
+        isOnline: method.isOnline,
+        isEnabled: method.isEnabled,
+      },
+    });
+  }
+
+  await prisma.coupon.upsert({
+    where: { code: "WELCOME10" },
+    update: {
+      name: "Giảm 10% cho đơn đầu tiên",
+      description: "Giảm tối đa 50.000đ cho đơn từ 300.000đ",
+      discountType: "percent",
+      discountValue: 10,
+      minOrderValue: 300000,
+      maxDiscount: 50000,
+      usageLimit: 500,
+      perUserLimit: 1,
+      isActive: true,
+      startAt: null,
+      endAt: null,
+    },
+    create: {
+      code: "WELCOME10",
+      name: "Giảm 10% cho đơn đầu tiên",
+      description: "Giảm tối đa 50.000đ cho đơn từ 300.000đ",
+      discountType: "percent",
+      discountValue: 10,
+      minOrderValue: 300000,
+      maxDiscount: 50000,
+      usageLimit: 500,
+      perUserLimit: 1,
+      isActive: true,
     },
   });
 
-  // ===== CATEGORY =====
   const fashionCategory = await prisma.category.upsert({
     where: { slug: "thoi-trang" },
     update: {},
@@ -138,7 +208,6 @@ async function main() {
     },
   });
 
-  // ===== PRODUCT 1 =====
   await prisma.product.upsert({
     where: { slug: "ao-thun-nam-cotton-premium" },
     update: {},
@@ -170,7 +239,6 @@ async function main() {
     },
   });
 
-  // ===== PRODUCT 2 =====
   await prisma.product.upsert({
     where: { slug: "giay-sneaker-basic-trang" },
     update: {},
@@ -201,6 +269,62 @@ async function main() {
       },
     },
   });
+  //TEST
+  await prisma.shippingMethod.upsert({
+  where: { code: "pickup" },
+  update: {
+    name: "Nhận tại cửa hàng",
+    price: 0,
+    estimatedDays: 0,
+    description: "Dùng để test thanh toán, không tính phí ship",
+  },
+  create: {
+    code: "pickup",
+    name: "Nhận tại cửa hàng",
+    price: 0,
+    estimatedDays: 0,
+    description: "Dùng để test thanh toán, không tính phí ship",
+  },
+});
+await prisma.product.upsert({
+  where: { slug: "san-pham-test-2000" },
+  update: {
+    name: "Sản phẩm test 2k",
+    description: "Sản phẩm dùng để test payOS 2.000đ",
+    price: 2000,
+    originalPrice: 2000,
+    stock: 999,
+    badge: "Test",
+    image: "https://placehold.co/600x800?text=Test+2000",
+    ratingAvg: 5,
+    reviewCount: 0,
+    isActive: true,
+    categoryId: fashionCategory.id,
+  },
+  create: {
+    name: "Sản phẩm test 2k",
+    slug: "san-pham-test-2000",
+    description: "Sản phẩm dùng để test payOS 2.000đ",
+    price: 2000,
+    originalPrice: 2000,
+    stock: 999,
+    badge: "Test",
+    image: "https://placehold.co/600x800?text=Test+2000",
+    ratingAvg: 5,
+    reviewCount: 0,
+    isActive: true,
+    categoryId: fashionCategory.id,
+    images: {
+      create: [{ imageUrl: "https://placehold.co/600x800?text=Test+2000", sortOrder: 1 }],
+    },
+    colors: {
+      create: [{ colorName: "Default" }],
+    },
+    sizes: {
+      create: [{ sizeName: "One Size" }],
+    },
+  },
+});
 
   console.log("✅ Seed completed");
 }

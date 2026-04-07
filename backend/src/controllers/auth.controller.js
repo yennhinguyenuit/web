@@ -7,12 +7,11 @@ const register = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
-    if (!name || !email || !password) {
-      return sendError(res, "Vui lòng nhập đầy đủ tên, email, mật khẩu", 400);
-    }
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedName = name.trim();
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -31,9 +30,9 @@ const register = async (req, res) => {
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
-        phone: phone || null,
+        name: normalizedName,
+        email: normalizedEmail,
+        phone: phone?.trim() || null,
         passwordHash: hashedPassword,
         roleId: userRole.id,
       },
@@ -64,12 +63,10 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return sendError(res, "Vui lòng nhập email và mật khẩu", 400);
-    }
+    const normalizedEmail = email.trim().toLowerCase();
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: { role: true },
     });
 
