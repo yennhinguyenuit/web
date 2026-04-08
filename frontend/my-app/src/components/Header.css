@@ -1,0 +1,54 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  background: red;
+  color: white;
+}
+
+.logo {
+  font-weight: bold;
+}
+
+.nav a {
+  margin: 0 15px;
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
+.right {
+  display: flex;
+  gap: 10px;
+}
+
+.search {
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: none;
+}
+
+.cart {
+  padding: 6px 12px;
+  border: none;
+  background: white;
+  color: red;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.auth-btn {
+  color: white;
+  text-decoration: none;
+  margin: 0 8px;
+  font-weight: 500;
+}
+
+.auth-btn:hover {
+  text-decoration: underline;
+}

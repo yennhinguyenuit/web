@@ -1,0 +1,12 @@
+@import './fonts.css';
+@import './theme.css';
+
+/* tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom thêm nếu cần */
+body {
+  font-family: 'Inter', sans-serif;
+}
