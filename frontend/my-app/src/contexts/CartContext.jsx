@@ -6,87 +6,117 @@ const CartContext = createContext(null);
 
 export const useCart = () => {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart must be used within CartProvider');
-  }
+  if (!context) throw new Error('useCart must be used within CartProvider');
   return context;
 };
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(null);
+  const [cart, setCart] = useState({ items: [], totalQuantity: 0 });
   const [loading, setLoading] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
-  const fetchCart = async () => {
-    if (!user) {
-      setCart(null);
-      return null;
-    }
-
-    setLoading(true);
-    try {
-      const response = await cartAPI.getCart();
-      if (response.success) {
-        setCart(response.data);
-        return response.data;
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to fetch cart:', error);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 🔥 load local cart (offline)
   useEffect(() => {
-    if (authLoading) return;
+    const local = JSON.parse(localStorage.getItem("cart") || "[]");
 
-    if (user) {
-      fetchCart();
-      return;
+    setCart({
+      items: local,
+      totalQuantity: local.reduce((t, i) => t + i.quantity, 0),
+    });
+  }, []);
+
+  // 🔥 save local
+  const saveLocal = (items) => {
+    localStorage.setItem("cart", JSON.stringify(items));
+
+    setCart({
+      items,
+      totalQuantity: items.reduce((t, i) => t + i.quantity, 0),
+    });
+  };
+
+  // 🔥 ADD
+  const addToCart = async (productId, quantity = 1) => {
+    const items = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    const exist = items.find(i => i.productId === productId);
+
+    let newItems;
+
+    if (exist) {
+      newItems = items.map(i =>
+        i.productId === productId
+          ? { ...i, quantity: i.quantity + quantity }
+          : i
+      );
+    } else {
+      newItems = [...items, { productId, quantity }];
     }
 
-    setCart(null);
-  }, [user, authLoading]);
+    saveLocal(newItems);
 
-  const addToCart = async (productId, quantity = 1, options = {}) => {
-    const response = await cartAPI.addToCart(productId, quantity, options);
-    setCart(response.data);
-    return response;
+    // 🟢 sync nếu online
+    if (navigator.onLine) {
+      try {
+        await cartAPI.addToCart(productId, quantity);
+      } catch {}
+    }
   };
 
-  const updateQuantity = async (itemId, quantity) => {
-    const response = await cartAPI.updateQuantity(itemId, quantity);
-    setCart(response.data);
-    return response;
+  // 🔥 UPDATE
+  const updateQuantity = async (productId, quantity) => {
+    if (quantity < 1) return;
+
+    const items = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    const newItems = items.map(i =>
+      i.productId === productId ? { ...i, quantity } : i
+    );
+
+    saveLocal(newItems);
   };
 
-  const removeItem = async (itemId) => {
-    const response = await cartAPI.removeItem(itemId);
-    setCart(response.data);
-    return response;
+  // 🔥 REMOVE
+  const removeItem = async (productId) => {
+    const items = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    const newItems = items.filter(i => i.productId !== productId);
+
+    saveLocal(newItems);
   };
 
+  // 🔥 CLEAR
   const clearCart = async () => {
-    const response = await cartAPI.clearCart();
-    setCart(response.data);
-    return response;
+    localStorage.removeItem("cart");
+    saveLocal([]);
   };
 
-  const value = useMemo(
-    () => ({
-      cart,
-      loading,
-      cartCount: cart?.totalQuantity || 0,
-      addToCart,
-      updateQuantity,
-      removeItem,
-      clearCart,
-      fetchCart,
-    }),
-    [cart, loading]
-  );
+  // 🔄 SYNC BACKEND
+  useEffect(() => {
+    const sync = async () => {
+      const items = JSON.parse(localStorage.getItem("cart") || "[]");
+
+      if (!items.length) return;
+
+      console.log("🔄 Sync cart...");
+
+      for (const i of items) {
+        await cartAPI.addToCart(i.productId, i.quantity);
+      }
+    };
+
+    window.addEventListener("online", sync);
+    return () => window.removeEventListener("online", sync);
+  }, []);
+
+  const value = useMemo(() => ({
+    cart,
+    cartCount: cart.totalQuantity,
+    addToCart,
+    updateQuantity,
+    removeItem,
+    clearCart,
+  }), [cart]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };

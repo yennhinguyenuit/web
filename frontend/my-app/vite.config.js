@@ -7,36 +7,50 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-
-      // 🔥 QUAN TRỌNG: tắt manifest của vite (dùng file riêng)
       manifest: false,
 
-      // 🔥 cache offline
       workbox: {
         runtimeCaching: [
+          // ✅ cache ảnh
           {
             urlPattern: ({ request }) => request.destination === 'image',
             handler: 'CacheFirst',
             options: {
               cacheName: 'images',
-              expiration: {
-                maxEntries: 50,
-              },
+              expiration: { maxEntries: 50 },
             },
           },
+
+          // ✅ cache PRODUCTS (đọc offline)
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api'),
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/products'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'products-cache',
+              expiration: { maxEntries: 50 },
+            },
+          },
+
+          // ✅ fallback page offline
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 3,
-              expiration: {
-                maxEntries: 50,
-              },
+              cacheName: 'pages',
             },
           },
         ],
       },
     })
-  ]
+  ],
+
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })

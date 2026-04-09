@@ -8,7 +8,7 @@ function Header() {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { cartCount } = useCart();
+  const { cart, cartCount } = useCart();
 
   const handleLogout = () => {
     logout();
@@ -21,6 +21,14 @@ function Header() {
     navigate(keyword ? `/shop?search=${encodeURIComponent(keyword)}` : '/shop');
   };
 
+  // 🔥 fallback offline nếu chưa sync backend
+  const getCartCount = () => {
+    if (cartCount) return cartCount;
+
+    const local = JSON.parse(localStorage.getItem("cart") || "[]");
+    return local.reduce((t, i) => t + i.quantity, 0);
+  };
+
   return (
     <header className="bg-white shadow">
       <div className="bg-red-600 text-white text-center py-2 text-sm">
@@ -28,23 +36,29 @@ function Header() {
       </div>
 
       <div className="flex flex-col gap-4 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+        
+        {/* LOGO */}
         <Link to="/" className="flex items-center gap-2 text-xl font-bold text-red-600">
           <img src={logo} className="h-9 w-9 object-contain" alt="Logo" />
           <span>LUXE STORE</span>
         </Link>
 
+        {/* NAV */}
         <nav className="flex flex-wrap gap-4 font-medium text-gray-700">
           <Link to="/" className="hover:text-red-600">Home</Link>
           <Link to="/shop" className="hover:text-red-600">Shop</Link>
           <Link to="/about" className="hover:text-red-600">About</Link>
           <Link to="/contact" className="hover:text-red-600">Contact</Link>
-          {user ? <Link to="/wishlist" className="hover:text-red-600">Wishlist</Link> : null}
-          {user ? <Link to="/account" className="hover:text-red-600">Account</Link> : null}
-          {user ? <Link to="/orders" className="hover:text-red-600">Orders</Link> : null}
-          {user?.role === 'admin' ? <Link to="/admin" className="hover:text-red-600">Admin</Link> : null}
+          {user && <Link to="/wishlist" className="hover:text-red-600">Wishlist</Link>}
+          {user && <Link to="/account" className="hover:text-red-600">Account</Link>}
+          {user && <Link to="/orders" className="hover:text-red-600">Orders</Link>}
+          {user?.role === 'admin' && <Link to="/admin" className="hover:text-red-600">Admin</Link>}
         </nav>
 
+        {/* SEARCH + USER + CART */}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          
+          {/* SEARCH */}
           <form onSubmit={handleSearch} className="flex items-center gap-2">
             <input
               placeholder="Search..."
@@ -57,11 +71,17 @@ function Header() {
             </button>
           </form>
 
+          {/* USER + CART */}
           <div className="flex items-center gap-4">
             {user ? (
               <>
-                <span className="text-sm text-gray-700 hidden md:block">Hi, {user.name || user.email}</span>
-                <button onClick={handleLogout} className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                <span className="text-sm text-gray-700 hidden md:block">
+                  Hi, {user.name || user.email}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                >
                   Logout
                 </button>
               </>
@@ -72,11 +92,12 @@ function Header() {
               </>
             )}
 
+            {/* 🛒 CART (STARBUCKS STYLE) */}
             <Link to="/cart">
               <div className="relative text-xl cursor-pointer">
                 🛒
                 <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs px-1 rounded-full min-w-5 text-center">
-                  {cartCount}
+                  {getCartCount()}
                 </span>
               </div>
             </Link>

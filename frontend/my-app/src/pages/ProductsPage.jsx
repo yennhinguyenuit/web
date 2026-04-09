@@ -13,63 +13,59 @@ export default function ProductsPage() {
   const [keyword, setKeyword] = useState(searchParams.get('search') || '');
   const { isWishlisted, toggleWishlist } = useWishlist();
 
-  const filters = useMemo(
-    () => ({
-      search: searchParams.get('search') || '',
-      category: searchParams.get('category') || '',
-      sort: searchParams.get('sort') || 'newest',
-      page: Number(searchParams.get('page') || 1),
-      limit: 12,
-    }),
-    [searchParams]
-  );
+  const filters = useMemo(() => ({
+    search: searchParams.get('search') || '',
+    categoryId: searchParams.get('category') || '',
+    sort: searchParams.get('sort') || 'newest',
+    page: Number(searchParams.get('page') || 1),
+    limit: 50,
+  }), [searchParams]);
 
+  // 🔥 LOAD CATEGORIES
   useEffect(() => {
-    setKeyword(searchParams.get('search') || '');
-  }, [searchParams]);
-
-  useEffect(() => {
-    productAPI
-      .getCategories()
-      .then((res) => setCategories(res.data || []))
-      .catch((error) => console.error(error));
+    productAPI.getCategories()
+      .then((res) => {
+        setCategories(res.data?.data || res.data || []);
+      })
+      .catch(console.error);
   }, []);
 
+  // 🔥 LOAD PRODUCTS (FIX CHÍNH)
   useEffect(() => {
-    const loadProducts = async () => {
-      setLoading(true);
+    const fetchProducts = async () => {
       try {
+        setLoading(true);
+
         const res = await productAPI.getProducts(filters);
+
+        console.log("API RES:", res);
+
         setProducts(res.data?.items || []);
         setPagination(res.data?.pagination || null);
-      } catch (error) {
-        console.error(error);
+
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
 
-    loadProducts();
+    fetchProducts();
   }, [filters]);
 
   const updateFilter = (key, value) => {
     const next = new URLSearchParams(searchParams);
 
-    if (!value) {
-      next.delete(key);
-    } else {
-      next.set(key, value);
-    }
+    if (!value) next.delete(key);
+    else next.set(key, value);
 
-    if (key !== 'page') {
-      next.set('page', '1');
-    }
+    if (key !== 'page') next.set('page', '1');
 
     setSearchParams(next);
   };
 
-  const handleSearchSubmit = (event) => {
-    event.preventDefault();
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
     updateFilter('search', keyword.trim());
   };
 
@@ -87,49 +83,52 @@ export default function ProductsPage() {
       </div>
 
       <div className="px-6 lg:px-10 space-y-6">
+
+        {/* FILTER */}
         <div className="bg-white rounded-xl shadow p-4 grid gap-4 md:grid-cols-3">
+
+          {/* SEARCH */}
           <form onSubmit={handleSearchSubmit} className="flex gap-2">
             <input
               value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
+              onChange={(e) => setKeyword(e.target.value)}
               placeholder="Tìm theo tên sản phẩm"
               className="border rounded px-4 py-2 flex-1"
             />
-            <button
-              type="submit"
-              className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
-            >
+            <button className="px-4 py-2 rounded bg-red-600 text-white">
               🔍 Tìm
             </button>
           </form>
 
+          {/* CATEGORY */}
           <select
-            value={filters.category}
-            onChange={(event) => updateFilter('category', event.target.value)}
+            value={filters.categoryId}
+            onChange={(e) => updateFilter('category', e.target.value)}
             className="border rounded px-4 py-2"
           >
             <option value="">Tất cả danh mục</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.slug}>
-                {category.name}
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>
 
+          {/* SORT */}
           <select
             value={filters.sort}
-            onChange={(event) => updateFilter('sort', event.target.value)}
+            onChange={(e) => updateFilter('sort', e.target.value)}
             className="border rounded px-4 py-2"
           >
             <option value="newest">Mới nhất</option>
             <option value="price_asc">Giá tăng dần</option>
             <option value="price_desc">Giá giảm dần</option>
-            <option value="rating_desc">Đánh giá cao</option>
           </select>
         </div>
 
+        {/* PRODUCTS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
+          {products.map(product => (
             <ProductCard
               key={product.id}
               product={product}
@@ -139,29 +138,12 @@ export default function ProductsPage() {
           ))}
         </div>
 
-        {!products.length ? (
+        {/* EMPTY */}
+        {!products.length && (
           <div className="text-center text-gray-600">
             Không tìm thấy sản phẩm phù hợp.
           </div>
-        ) : null}
-
-        {pagination?.totalPages > 1 ? (
-          <div className="flex justify-center gap-2">
-            {Array.from({ length: pagination.totalPages }, (_, index) => index + 1).map((pageNumber) => (
-              <button
-                key={pageNumber}
-                onClick={() => updateFilter('page', String(pageNumber))}
-                className={`px-4 py-2 rounded border ${
-                  pageNumber === pagination.page
-                    ? 'bg-red-600 text-white border-red-600'
-                    : 'bg-white'
-                }`}
-              >
-                {pageNumber}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
