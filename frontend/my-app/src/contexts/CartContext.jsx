@@ -12,10 +12,9 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [], totalQuantity: 0 });
-  const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  // 🔥 load local cart (offline)
+  // 🔥 LOAD LOCAL
   useEffect(() => {
     const local = JSON.parse(localStorage.getItem("cart") || "[]");
 
@@ -25,7 +24,7 @@ export const CartProvider = ({ children }) => {
     });
   }, []);
 
-  // 🔥 save local
+  // 🔥 SAVE
   const saveLocal = (items) => {
     localStorage.setItem("cart", JSON.stringify(items));
 
@@ -35,36 +34,45 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  // 🔥 ADD
-  const addToCart = async (productId, quantity = 1) => {
+  // 🔥 ADD (FIX CHÍNH)
+  const addToCart = async (product, quantity = 1) => {
     const items = JSON.parse(localStorage.getItem("cart") || "[]");
 
-    const exist = items.find(i => i.productId === productId);
+    const exist = items.find(i => i.productId === product.id);
 
     let newItems;
 
     if (exist) {
       newItems = items.map(i =>
-        i.productId === productId
+        i.productId === product.id
           ? { ...i, quantity: i.quantity + quantity }
           : i
       );
     } else {
-      newItems = [...items, { productId, quantity }];
+      newItems = [
+        ...items,
+        {
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity,
+        }
+      ];
     }
 
     saveLocal(newItems);
 
-    // 🟢 sync nếu online
+    // sync nếu online
     if (navigator.onLine) {
       try {
-        await cartAPI.addToCart(productId, quantity);
+        await cartAPI.addToCart(product.id, quantity);
       } catch {}
     }
   };
 
-  // 🔥 UPDATE
-  const updateQuantity = async (productId, quantity) => {
+  // 🔄 UPDATE
+  const updateQuantity = (productId, quantity) => {
     if (quantity < 1) return;
 
     const items = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -76,8 +84,8 @@ export const CartProvider = ({ children }) => {
     saveLocal(newItems);
   };
 
-  // 🔥 REMOVE
-  const removeItem = async (productId) => {
+  // ❌ REMOVE
+  const removeItem = (productId) => {
     const items = JSON.parse(localStorage.getItem("cart") || "[]");
 
     const newItems = items.filter(i => i.productId !== productId);
@@ -85,13 +93,13 @@ export const CartProvider = ({ children }) => {
     saveLocal(newItems);
   };
 
-  // 🔥 CLEAR
-  const clearCart = async () => {
+  // 🧹 CLEAR
+  const clearCart = () => {
     localStorage.removeItem("cart");
     saveLocal([]);
   };
 
-  // 🔄 SYNC BACKEND
+  // 🔄 SYNC ONLINE
   useEffect(() => {
     const sync = async () => {
       const items = JSON.parse(localStorage.getItem("cart") || "[]");

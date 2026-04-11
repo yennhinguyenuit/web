@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../services/api';
 import { useWishlist } from '../hooks/useWishlist';
+import { useCart } from '../contexts/CartContext'; // 🔥 THÊM
 
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -11,7 +12,9 @@ export default function ProductsPage() {
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState(searchParams.get('search') || '');
+
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { addToCart } = useCart(); // 🔥 THÊM
 
   const filters = useMemo(() => ({
     search: searchParams.get('search') || '',
@@ -30,15 +33,13 @@ export default function ProductsPage() {
       .catch(console.error);
   }, []);
 
-  // 🔥 LOAD PRODUCTS (FIX CHÍNH)
+  // 🔥 LOAD PRODUCTS
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
 
         const res = await productAPI.getProducts(filters);
-
-        console.log("API RES:", res);
 
         setProducts(res.data?.items || []);
         setPagination(res.data?.pagination || null);
@@ -67,6 +68,11 @@ export default function ProductsPage() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     updateFilter('search', keyword.trim());
+  };
+
+  // 🔥 HANDLE ADD TO CART (QUAN TRỌNG)
+  const handleAddToCart = (product) => {
+    addToCart(product); // truyền nguyên object
   };
 
   if (loading) {
@@ -134,6 +140,7 @@ export default function ProductsPage() {
               product={product}
               liked={isWishlisted(product.id)}
               onToggleWishlist={toggleWishlist}
+              onAddToCart={() => handleAddToCart(product)} // 🔥 THÊM
             />
           ))}
         </div>

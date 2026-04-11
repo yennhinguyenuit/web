@@ -34,16 +34,16 @@ function App() {
     const syncCart = async () => {
       try {
         const token = localStorage.getItem('token');
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const items = JSON.parse(localStorage.getItem('cart') || '[]'); // ✅ FIX
 
-        if (!token || !cart.length) return;
+        if (!token || !items.length) return;
 
-        console.log('Sync cart...');
+        console.log('🔄 Sync cart...');
 
         await Promise.allSettled(
-          cart.map((item) =>
+          items.map((item) =>
             cartAPI.addToCart(
-              item.id,
+              item.productId,
               item.quantity,
               {
                 color: item.color,
@@ -53,10 +53,10 @@ function App() {
           )
         );
 
-        localStorage.removeItem('cart');
-        console.log('Da dong bo gio hang');
+        localStorage.removeItem('cart'); // optional
+        console.log('✅ Đã đồng bộ giỏ hàng');
       } catch (error) {
-        console.error('Loi dong bo gio hang:', error);
+        console.error('❌ Lỗi đồng bộ giỏ hàng:', error);
       }
     };
 

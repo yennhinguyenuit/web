@@ -27,42 +27,45 @@ function ProductCard({ product, liked = false, onToggleWishlist }) {
     }
   };
 
-  // 🔥 FIX OFFLINE + ONLINE
+  // 🔥 FIX CHÍNH Ở ĐÂY
   const handleAddToCart = async () => {
-  if (!ensureLoggedIn()) return;
+    if (!ensureLoggedIn()) return;
 
-  if (requiresVariantSelection) {
-    navigate(`/products/${product.id}`);
-    return;
-  }
+    if (requiresVariantSelection) {
+      navigate(`/products/${product.id}`);
+      return;
+    }
 
-  try {
-    await addToCart(product.id, 1);
-  } catch (error) {
-    alert(error.message || 'Không thể thêm vào giỏ hàng');
-  }
-};
+    try {
+      await addToCart(product, 1); // ✅ FIX: truyền full product
+    } catch (error) {
+      alert(error.message || 'Không thể thêm vào giỏ hàng');
+    }
+  };
 
   const handleBuyNow = async () => {
-  if (!ensureLoggedIn()) return;
+    if (!ensureLoggedIn()) return;
 
-  if (requiresVariantSelection) {
-    navigate(`/products/${product.id}`);
-    return;
-  }
+    if (requiresVariantSelection) {
+      navigate(`/products/${product.id}`);
+      return;
+    }
 
-  try {
-    await addToCart(product.id, 1);
-    navigate('/checkout');
-  } catch (error) {
-    alert(error.message || 'Không thể tạo đơn mua ngay');
-  }
-};
+    try {
+      await addToCart(product, 1); // ✅ FIX: truyền full product
+      navigate('/checkout');
+    } catch (error) {
+      alert(error.message || 'Không thể tạo đơn mua ngay');
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow hover:shadow-xl transition p-4 flex flex-col gap-3">
       <div className="flex justify-between items-start gap-3">
-        <span className="text-xs text-gray-500">{product.category?.name || 'Sản phẩm'}</span>
+        <span className="text-xs text-gray-500">
+          {product.category?.name || 'Sản phẩm'}
+        </span>
+
         <button onClick={handleWishlist} className="text-xl">
           {liked ? '❤️' : '🤍'}
         </button>
@@ -84,10 +87,17 @@ function ProductCard({ product, liked = false, onToggleWishlist }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <button onClick={handleAddToCart} className="border border-red-600 text-red-600 py-2 rounded">
+        <button
+          onClick={handleAddToCart}
+          className="border border-red-600 text-red-600 py-2 rounded"
+        >
           Thêm vào giỏ
         </button>
-        <button onClick={handleBuyNow} className="bg-red-600 text-white py-2 rounded">
+
+        <button
+          onClick={handleBuyNow}
+          className="bg-red-600 text-white py-2 rounded"
+        >
           Mua ngay
         </button>
       </div>
