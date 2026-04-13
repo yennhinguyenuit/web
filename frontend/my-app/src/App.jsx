@@ -30,41 +30,43 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { cartAPI } from './services/api';
 
 function App() {
-  useEffect(() => {
-    const syncCart = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const items = JSON.parse(localStorage.getItem('cart') || '[]'); // ✅ FIX
+useEffect(() => {
+  const syncCart = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const items = JSON.parse(localStorage.getItem('cart') || '[]');
 
-        if (!token || !items.length) return;
+      if (!token || !items.length) return;
 
-        console.log('🔄 Sync cart...');
+      console.log('🔄 Sync cart...');
 
-        await Promise.allSettled(
-          items.map((item) =>
-            cartAPI.addToCart(
-              item.productId,
-              item.quantity,
-              {
-                color: item.color,
-                size: item.size,
-              }
-            )
+      await Promise.allSettled(
+        items.map((item) =>
+          cartAPI.addToCart(
+            item.productId,
+            item.quantity,
+            {
+              color: item.color,
+              size: item.size,
+            }
           )
-        );
+        )
+      );
 
-        localStorage.removeItem('cart'); // optional
-        console.log('✅ Đã đồng bộ giỏ hàng');
-      } catch (error) {
-        console.error('❌ Lỗi đồng bộ giỏ hàng:', error);
-      }
-    };
+      // ❌ KHÔNG XOÁ LOCAL
+      // localStorage.removeItem('cart');
 
-    syncCart();
-    window.addEventListener('online', syncCart);
+      console.log('✅ Đồng bộ thành công');
+    } catch (error) {
+      console.error('❌ Lỗi sync:', error);
+    }
+  };
 
-    return () => window.removeEventListener('online', syncCart);
-  }, []);
+  syncCart();
+  window.addEventListener('online', syncCart);
+
+  return () => window.removeEventListener('online', syncCart);
+}, []);
 
   return (
     <Routes>

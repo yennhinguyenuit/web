@@ -14,7 +14,7 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [], totalQuantity: 0 });
   const { user } = useAuth();
 
-  // 🔥 LOAD LOCAL
+  // 🔥 LOAD từ local (QUAN TRỌNG NHẤT)
   useEffect(() => {
     const local = JSON.parse(localStorage.getItem("cart") || "[]");
 
@@ -24,7 +24,7 @@ export const CartProvider = ({ children }) => {
     });
   }, []);
 
-  // 🔥 SAVE
+  // 🔥 SAVE LOCAL + STATE (DUY NHẤT)
   const saveLocal = (items) => {
     localStorage.setItem("cart", JSON.stringify(items));
 
@@ -34,63 +34,59 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  // 🔥 ADD (FIX CHÍNH)
+  // 🔥 ADD TO CART (KHÔNG overwrite server)
   const addToCart = async (product, quantity = 1) => {
-    const items = JSON.parse(localStorage.getItem("cart") || "[]");
+    const items = [...cart.items];
 
-    const exist = items.find(i => i.productId === product.id);
+    const index = items.findIndex(
+      i => String(i.productId) === String(product.id)
+    );
 
-    let newItems;
-
-    if (exist) {
-      newItems = items.map(i =>
-        i.productId === product.id
-          ? { ...i, quantity: i.quantity + quantity }
-          : i
-      );
+    if (index !== -1) {
+      items[index].quantity += quantity;
     } else {
-      newItems = [
-        ...items,
-        {
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity,
-        }
-      ];
+      items.push({
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity,
+      });
     }
 
-    saveLocal(newItems);
+    // 👉 update UI ngay
+    saveLocal(items);
 
-    // sync nếu online
-    if (navigator.onLine) {
+    // 👉 sync server (KHÔNG reload lại cart)
+    if (navigator.onLine && user) {
       try {
         await cartAPI.addToCart(product.id, quantity);
-      } catch {}
+      } catch (e) {
+        console.error("Sync lỗi:", e);
+      }
     }
   };
 
-  // 🔄 UPDATE
+  // 🔄 UPDATE QUANTITY
   const updateQuantity = (productId, quantity) => {
     if (quantity < 1) return;
 
-    const items = JSON.parse(localStorage.getItem("cart") || "[]");
-
-    const newItems = items.map(i =>
-      i.productId === productId ? { ...i, quantity } : i
+    const items = cart.items.map(i =>
+      String(i.productId) === String(productId)
+        ? { ...i, quantity }
+        : i
     );
 
-    saveLocal(newItems);
+    saveLocal(items);
   };
 
   // ❌ REMOVE
   const removeItem = (productId) => {
-    const items = JSON.parse(localStorage.getItem("cart") || "[]");
+    const items = cart.items.filter(
+      i => String(i.productId) !== String(productId)
+    );
 
-    const newItems = items.filter(i => i.productId !== productId);
-
-    saveLocal(newItems);
+    saveLocal(items);
   };
 
   // 🧹 CLEAR
@@ -99,23 +95,32 @@ export const CartProvider = ({ children }) => {
     saveLocal([]);
   };
 
-  // 🔄 SYNC ONLINE
+  // 🔄 BACKGROUND SYNC (PWA CHUẨN)
   useEffect(() => {
-    const sync = async () => {
-      const items = JSON.parse(localStorage.getItem("cart") || "[]");
+    const syncCart = async () => {
+      try {
+        if (!navigator.onLine || !user) return;
 
-      if (!items.length) return;
+        const items = JSON.parse(localStorage.getItem("cart") || "[]");
+        if (!items.length) return;
 
-      console.log("🔄 Sync cart...");
+        console.log("🔄 Sync cart...");
 
-      for (const i of items) {
-        await cartAPI.addToCart(i.productId, i.quantity);
+        await Promise.allSettled(
+          items.map(item =>
+            cartAPI.addToCart(item.productId, item.quantity)
+          )
+        );
+
+        console.log("✅ Đòng bộ thành công");
+      } catch (err) {
+        console.error("❌ Sync lỗi:", err);
       }
     };
 
-    window.addEventListener("online", sync);
-    return () => window.removeEventListener("online", sync);
-  }, []);
+    window.addEventListener("online", syncCart);
+    return () => window.removeEventListener("online", syncCart);
+  }, [user]);
 
   const value = useMemo(() => ({
     cart,
@@ -126,5 +131,9 @@ export const CartProvider = ({ children }) => {
     clearCart,
   }), [cart]);
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+    </CartContext.Provider>
+  );
 };
