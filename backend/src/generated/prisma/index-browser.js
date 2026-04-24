@@ -357,6 +357,23 @@ exports.Prisma.OrderAddressScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.FlashSaleScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  discountPercent: 'discountPercent',
+  startAt: 'startAt',
+  endAt: 'endAt',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.FlashSaleItemScalarFieldEnum = {
+  id: 'id',
+  flashSaleId: 'flashSaleId',
+  productId: 'productId'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -404,7 +421,9 @@ exports.Prisma.ModelName = {
   Review: 'Review',
   PaymentTransaction: 'PaymentTransaction',
   CouponUsage: 'CouponUsage',
-  OrderAddress: 'OrderAddress'
+  OrderAddress: 'OrderAddress',
+  FlashSale: 'FlashSale',
+  FlashSaleItem: 'FlashSaleItem'
 };
 
 /**
