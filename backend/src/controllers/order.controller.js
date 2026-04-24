@@ -193,6 +193,7 @@ const buildOnlineTransactionData = ({ paymentMethod, order, total }) => {
 const createOrder = async (req, res) => {
   try {
     const {
+      items,
       addressId,
       shippingAddress,
       saveAddress,
@@ -274,14 +275,30 @@ const createOrder = async (req, res) => {
         },
       });
 
-      if (!cart || cart.items.length === 0) {
+      if ((!cart || cart.items.length === 0) && (!items || items.length === 0)) {
         throw createError("Giỏ hàng đang trống", 400);
       }
 
-      const subtotal = cart.items.reduce(
-        (sum, item) => sum + Number(item.unitPrice) * item.quantity,
-        0
-      );
+      const sourceItems = (items && items.length > 0)
+        ? items.map(i => ({
+            productId: i.productId,
+            quantity: i.quantity,
+          }))
+        : cart.items.map(i => ({
+            productId: i.productId,
+            quantity: i.quantity,
+          }));
+
+      const productIds = sourceItems.map(i => i.productId);
+
+      const products = await tx.product.findMany({
+        where: { id: { in: productIds } }
+      });
+
+      const subtotal = sourceItems.reduce((sum, item) => {
+        const p = products.find(p => p.id === item.productId);
+        return sum + Number(p.price) * item.quantity;
+      }, 0);
 
       const { coupon, discount } = await validateCouponForCheckout({
         prisma: tx,
@@ -309,11 +326,17 @@ const createOrder = async (req, res) => {
           },
         });
       }
+/////////
+      for (const item of sourceItems) {
+       const p = products.find(p => p.id === item.productId);
 
-      for (const item of cart.items) {
+        if (!p) {
+          throw createError("Sản phẩm không tồn tại", 400);
+        }
+
         const updated = await tx.product.updateMany({
           where: {
-            id: item.productId,
+            id: p.id,
             isActive: true,
             stock: {
               gte: item.quantity,
@@ -328,12 +351,11 @@ const createOrder = async (req, res) => {
 
         if (updated.count === 0) {
           throw createError(
-            `Sản phẩm "${item.product.name}" không đủ tồn kho hoặc đã bị ẩn`,
+            `Sản phẩm "${p.name}" không đủ tồn kho`,
             400
           );
         }
       }
-
       const createdOrder = await tx.order.create({
         data: {
           code: generateOrderCode(),
@@ -353,14 +375,19 @@ const createOrder = async (req, res) => {
         },
       });
 
-      for (const item of cart.items) {
+      for (const item of sourceItems) {
+        const p = products.find(p => p.id === item.productId);
+
+        if (!p) {
+          throw createError("Sản phẩm không tồn tại", 400);
+        }
         await tx.orderItem.create({
           data: {
             orderId: createdOrder.id,
             productId: item.productId,
-            productName: item.product.name,
-            productImage: item.product.image,
-            unitPrice: item.unitPrice,
+            productName: p.name,
+            productImage: p.image,
+            unitPrice: p.price,
             quantity: item.quantity,
             color: item.color || null,
             size: item.size || null,
@@ -422,10 +449,11 @@ const createOrder = async (req, res) => {
           },
         });
       }
-
-      await tx.cartItem.deleteMany({
-        where: { cartId: cart.id },
-      });
+      if (cart) {
+        await tx.cartItem.deleteMany({
+          where: { cartId: cart.id },
+        });
+      }
 
       return tx.order.findUnique({
         where: { id: createdOrder.id },
@@ -502,7 +530,11 @@ const getOrderDetail = async (req, res) => {
         paymentMethod: true,
         shippingMethod: true,
         coupon: true,
-        items: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
         transactions: {
           orderBy: { createdAt: "desc" },
         },
@@ -516,7 +548,13 @@ const getOrderDetail = async (req, res) => {
     return sendSuccess(
       res,
       "Lấy chi tiết đơn hàng thành công",
-      formatOrderDetail(order)
+      {
+        ...order,
+        items: order.items.map(item => ({
+          ...item,
+          product: item.product
+        }))
+      }
     );
   } catch (error) {
     console.error("Get order detail error:", error);
@@ -524,8 +562,57 @@ const getOrderDetail = async (req, res) => {
   }
 };
 
+const cancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id,
+        userId: req.user.id,
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!order) {
+      return sendError(res, "Không tìm thấy đơn hàng", 404);
+    }
+
+    if (order.status !== "pending") {
+      return sendError(res, "Chỉ có thể hủy đơn đang chờ xử lý", 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              increment: item.quantity,
+            },
+          },
+        });
+      }
+
+      await tx.order.update({
+        where: { id },
+        data: {
+          status: "cancelled",
+        },
+      });
+    });
+
+    return sendSuccess(res, "Đã hủy đơn hàng");
+  } catch (error) {
+    console.error("Cancel order error:", error);
+    return sendError(res, "Lỗi server khi hủy đơn", 500);
+  }
+};
 module.exports = {
   createOrder,
   getMyOrders,
   getOrderDetail,
+  cancelOrder,
 };

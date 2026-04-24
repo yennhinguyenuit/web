@@ -1,117 +1,158 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { orderAPI, paymentAPI } from '../services/api';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadOrder = async () => {
-    try {
-      const res = await orderAPI.getOrderById(id);
-      setOrder(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    loadOrder();
+    const fetchOrder = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/orders/${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.message);
+          return;
+        }
+
+        setOrder(data.data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchOrder();
   }, [id]);
 
-  const refreshPayment = async () => {
-    try {
-      await paymentAPI.getPaymentStatus(id);
-      await loadOrder();
-    } catch (err) {
-      alert(err.message || 'Không thể cập nhật trạng thái thanh toán');
-    }
-  };
+  const handleCancel = async () => {
+    if (!window.confirm('Bạn chắc chắn muốn hủy đơn?')) return;
 
-  const continuePayment = async () => {
     try {
-      const res = await paymentAPI.createPaymentIntent(id);
-      const checkoutUrl = res.data?.checkout?.url;
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl;
+      const res = await fetch(`http://localhost:5000/api/orders/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message);
         return;
       }
-      await loadOrder();
+
+      alert('Đã hủy đơn');
+      window.location.reload();
     } catch (err) {
-      alert(err.message || 'Không thể mở lại trang thanh toán');
+      console.error(err);
     }
   };
 
-  if (loading) return <p className="p-10">Đang tải...</p>;
-  if (!order) return <p className="p-10">Không tìm thấy đơn hàng.</p>;
-
-  const payment = order.payment || {};
-  const checkoutUrl = payment.checkout?.url;
+  if (!order) return <p className="p-10">Đang tải...</p>;
 
   return (
-    <div className="max-w-4xl mx-auto p-10 space-y-8">
-      <div className="bg-white rounded shadow p-6 space-y-2">
-        <h1 className="text-3xl font-bold">Chi tiết đơn hàng</h1>
-        <p><strong>Mã đơn:</strong> {order.code}</p>
-        <p><strong>Trạng thái đơn:</strong> {order.status}</p>
-        <p><strong>Trạng thái thanh toán:</strong> {order.paymentStatus}</p>
-        <p><strong>Tổng tiền:</strong> {Number(order.total).toLocaleString()}đ</p>
+    <div className="max-w-3xl mx-auto p-4 space-y-4">
+
+      {/* 🚚 VẬN CHUYỂN */}
+      <div className="bg-white p-4 rounded shadow">
+        <p className="font-semibold mb-2">Thông tin vận chuyển</p>
+        <p>Standard Express</p>
       </div>
 
-      {order.shippingAddress ? (
-        <div className="bg-white rounded shadow p-6">
-          <h2 className="text-xl font-semibold mb-3">Địa chỉ giao hàng</h2>
-          <p>{order.shippingAddress.name} - {order.shippingAddress.phone}</p>
-          <p>
-            {order.shippingAddress.address}, {order.shippingAddress.ward}, {order.shippingAddress.district}, {order.shippingAddress.city}
-          </p>
-        </div>
-      ) : null}
+      {/* 📍 ĐỊA CHỈ */}
+     <div className="bg-white p-4 rounded shadow">
+        <p className="font-semibold mb-2">Địa chỉ nhận hàng</p>
 
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="text-xl font-semibold mb-3">Sản phẩm</h2>
-        <div className="space-y-4">
-          {order.items.map((item) => (
-            <div key={item.id} className="border-b pb-3 last:border-b-0 flex gap-4">
-              {item.productImage ? <img src={item.productImage} alt={item.productName} className="w-16 h-16 object-cover rounded" /> : null}
-              <div className="flex-1">
-                <p className="font-medium">{item.productName}</p>
-                <p>Số lượng: {item.quantity}</p>
-                {item.color ? <p>Màu: {item.color}</p> : null}
-                {item.size ? <p>Size: {item.size}</p> : null}
-              </div>
-              <div className="text-right">
-                <p>Đơn giá: {Number(item.unitPrice).toLocaleString()}đ</p>
-                <p className="font-medium">Tạm tính: {Number(item.subTotal).toLocaleString()}đ</p>
+        <p>{order.address?.name}</p>
+        <p>{order.address?.phone}</p>
+
+        <p>
+          {[
+            order.address?.address,
+            order.address?.ward,
+            order.address?.district,
+            order.address?.city
+          ]
+            .filter(Boolean)
+            .join(', ')
+          }
+        </p>
+      </div>
+      {/* 🛍️ SẢN PHẨM (ĐÃ FIX FULL UI) */}
+      <div className="bg-white p-4 rounded shadow">
+        <p className="font-semibold mb-3">Sản phẩm</p>
+
+        {order.items?.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center justify-between border-b py-3"
+          >
+
+            {/* LEFT */}
+            <div className="flex items-center gap-3">
+
+              {/* ẢNH */}
+              <img
+                src={item.product?.image || '/no-image.png'}
+                alt={item.product?.name}
+                className="w-16 h-16 object-cover rounded"
+              />
+
+              {/* INFO */}
+              <div>
+                <p className="font-medium">
+                  {item.product?.name || 'Sản phẩm'}
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  Số lượng: {item.quantity}
+                </p>
               </div>
             </div>
-          ))}
+
+            {/* GIÁ */}
+            <div className="text-right">
+             {item.price ? (
+                <p className="font-medium">
+                  {Number(item.price).toLocaleString()}đ
+                </p>
+              ) : null}
+            </div>
+
+          </div>
+        ))}
+
+        {/* TOTAL */}
+        <div className="flex justify-between mt-4 font-bold">
+          <span>Thành tiền:</span>
+          <span>{Number(order.total).toLocaleString()}đ</span>
         </div>
       </div>
 
-      {payment.requiresAction ? (
-        <div className="bg-white rounded shadow p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Thanh toán đơn hàng</h2>
-          <p className="text-gray-600">Đơn hàng này đang chờ thanh toán. Bạn có thể mở lại trang PayOS để quét QR hoặc hoàn tất thanh toán trực tuyến.</p>
-          <div className="flex flex-wrap gap-3">
-            {checkoutUrl ? (
-              <a href={checkoutUrl} className="inline-block bg-red-600 text-white px-4 py-2 rounded">
-                Mở trang PayOS
-              </a>
-            ) : (
-              <button onClick={continuePayment} className="inline-block bg-red-600 text-white px-4 py-2 rounded">
-                Thanh toán lại
-              </button>
-            )}
-            <button onClick={refreshPayment} className="px-4 py-2 border rounded">
-              Cập nhật trạng thái thanh toán
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {/* 🔘 BUTTON */}
+      <div className="flex gap-3">
+        {order.status === 'pending' && (
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 border rounded text-red-600"
+          >
+            Hủy đơn hàng
+          </button>
+        )}
+
+        <button className="px-4 py-2 border rounded">
+          Liên hệ Shop
+        </button>
+      </div>
     </div>
   );
 }

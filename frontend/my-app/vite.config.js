@@ -28,23 +28,23 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
 
-        // 🔥 cache file build (QUAN TRỌNG)
+        // cache file build (QUAN TRỌNG)
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
 
         runtimeCaching: [
-          // ❌ KHÔNG cache auth
+          // KHÔNG cache auth
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/auth'),
             handler: 'NetworkOnly',
           },
 
-          // ❌ KHÔNG cache cart
+          //  KHÔNG cache cart
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/cart'),
             handler: 'NetworkOnly',
           },
 
-          // ✅ CACHE ẢNH (có giới hạn → tránh crash)
+          // CACHE ẢNH (có giới hạn → tránh crash)
           {
             urlPattern: ({ request }) => request.destination === 'image',
             handler: 'CacheFirst',
@@ -57,7 +57,7 @@ export default defineConfig({
             },
           },
 
-          // ✅ CACHE PRODUCTS API
+          // CACHE PRODUCTS API
           {
             urlPattern: ({ url }) =>
               url.pathname.startsWith('/api/products'),
@@ -71,7 +71,7 @@ export default defineConfig({
             },
           },
 
-          // ✅ PAGE (QUAN TRỌNG NHẤT cho offline reload)
+          // PAGE (QUAN TRỌNG NHẤT cho offline reload)
           {
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',

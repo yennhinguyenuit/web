@@ -18,6 +18,7 @@ import WishlistPage from './pages/WishlistPage';
 import AccountPage from './pages/AccountPage';
 import OrdersPage from './pages/OrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
+import OrderSuccess from './pages/OrdersSuccessPage';
 import PaymentResultPage from './pages/PaymentResultPage';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -53,7 +54,7 @@ useEffect(() => {
         )
       );
 
-      // ❌ KHÔNG XOÁ LOCAL
+      // KHÔNG XOÁ LOCAL
       // localStorage.removeItem('cart');
 
       console.log('✅ Đồng bộ thành công');
@@ -132,6 +133,14 @@ useEffect(() => {
           element={
             <ProtectedRoute>
               <PaymentResultPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/order-success"
+          element={
+            <ProtectedRoute>
+              <OrderSuccess />
             </ProtectedRoute>
           }
         />

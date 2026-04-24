@@ -7,12 +7,35 @@ import ProductCard from '../components/ProductCard';
 function HomePage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState("");
+  const [debounceSearch, setDebounceSearch] = useState("");
+  const [price, setPrice] = useState("");
+  const [sort, setSort] = useState("");
+
   const { isWishlisted, toggleWishlist } = useWishlist();
 
+  // debounce search (tránh spam API)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebounceSearch(search);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // gọi API khi search/filter/sort thay đổi
   useEffect(() => {
     const loadProducts = async () => {
+      setLoading(true);
       try {
-        const res = await productAPI.getProducts({ limit: 4 });
+        const res = await productAPI.getProducts({
+          search: debounceSearch,
+          price,
+          sort,
+          limit: 4
+        });
+
         setProducts(res.data?.items || []);
       } catch (error) {
         console.error(error);
@@ -22,10 +45,11 @@ function HomePage() {
     };
 
     loadProducts();
-  }, []);
+  }, [debounceSearch, price, sort]);
 
   return (
     <div className="bg-white">
+      {/* HERO */}
       <div className="relative h-[500px]">
         <img
           src="https://images.unsplash.com/photo-1521336575822-6da63fb45455"
@@ -52,15 +76,55 @@ function HomePage() {
         </div>
       </div>
 
+      {/* PRODUCTS */}
       <div className="py-16 px-10">
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>
             <h2 className="text-3xl font-bold">Sản phẩm nổi bật</h2>
-            <p className="text-gray-500 mt-2">Chọn nhanh món bạn thích rồi thêm vào giỏ hoặc mua ngay.</p>
+            <p className="text-gray-500 mt-2">
+              Chọn nhanh món bạn thích rồi thêm vào giỏ hoặc mua ngay.
+            </p>
           </div>
-          <Link to="/shop" className="text-red-600 font-medium">Xem toàn bộ sản phẩm</Link>
+
+          <Link to="/shop" className="text-red-600 font-medium">
+            Xem toàn bộ sản phẩm
+          </Link>
         </div>
 
+        {/* 🔍 SEARCH + FILTER + SORT */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          {/* SEARCH */}
+          <input
+            placeholder="Tìm sản phẩm..."
+            className="border px-4 py-2 rounded w-64"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          {/* FILTER GIÁ */}
+          <select
+            className="border px-4 py-2 rounded"
+            onChange={(e) => setPrice(e.target.value)}
+          >
+            <option value="">Tất cả giá</option>
+            <option value="0-500">0 - 500k</option>
+            <option value="500-1000">500k - 1tr</option>
+            <option value="1000+">1tr+</option>
+          </select>
+
+          {/* SORT */}
+          <select
+            className="border px-4 py-2 rounded"
+            onChange={(e) => setSort(e.target.value)}
+          >
+            <option value="">Sắp xếp</option>
+            <option value="newest">Mới nhất</option>
+            <option value="price_asc">Giá tăng dần</option>
+            <option value="price_desc">Giá giảm dần</option>
+          </select>
+        </div>
+
+        {/* LIST */}
         {loading ? (
           <p className="text-center">Đang tải...</p>
         ) : (
@@ -77,10 +141,16 @@ function HomePage() {
         )}
       </div>
 
+      {/* REVIEW */}
       <div className="bg-red-600 py-20 px-10 text-white">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold mb-3">Khách Hàng Nói Gì Về Chúng Tôi</h2>
-          <p className="text-gray-200">Hàng nghìn khách hàng đã tin tưởng và hài lòng với sản phẩm, dịch vụ của Luxe Store</p>
+          <h2 className="text-4xl font-bold mb-3">
+            Khách Hàng Nói Gì Về Chúng Tôi
+          </h2>
+          <p className="text-gray-200">
+            Hàng nghìn khách hàng đã tin tưởng và hài lòng với sản phẩm, dịch vụ
+            của Luxe Store
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 text-center mb-12 gap-6">
@@ -101,9 +171,14 @@ function HomePage() {
         </div>
       </div>
 
+      {/* CTA */}
       <div className="py-16 text-center space-y-4">
-        <h2 className="text-3xl font-bold">Bắt đầu mua sắm ngay hôm nay</h2>
-        <p className="text-gray-500">Từ trang shop bạn có thể lọc sản phẩm, thêm vào giỏ và thanh toán ngay.</p>
+        <h2 className="text-3xl font-bold">
+          Bắt đầu mua sắm ngay hôm nay
+        </h2>
+        <p className="text-gray-500">
+          Từ trang shop bạn có thể lọc sản phẩm, thêm vào giỏ và thanh toán ngay.
+        </p>
 
         <Link to="/shop">
           <button className="bg-red-600 text-white px-8 py-3 rounded hover:bg-red-700">

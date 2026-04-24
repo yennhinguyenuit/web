@@ -8,17 +8,29 @@ export default function CartPage() {
   const items = cart?.items || [];
   const totalQuantity = cart?.totalQuantity || 0;
 
+  // format tiền
+  const formatPrice = (num) => {
+    return Number(num).toLocaleString('vi-VN') + 'đ';
+  };
+
+  // tổng tiền realtime
   const total = items.reduce((t, i) => {
-    const price = i.price || 100000;
-    return t + (price * i.quantity);
+    const price = Number(i.price) || 100000;
+    const qty = Number(i.quantity) || 0;
+    return t + price * qty;
   }, 0);
 
+  // xóa item
   const handleRemoveItem = (productId) => {
     removeItem(productId);
   };
 
+  // cập nhật số lượng (auto xóa nếu = 0)
   const handleUpdateQty = (productId, qty) => {
-    if (qty < 1) return;
+    if (qty <= 0) {
+      removeItem(productId);
+      return;
+    }
     updateQuantity(productId, qty);
   };
 
@@ -70,55 +82,65 @@ export default function CartPage() {
 
             {/* LIST */}
             <div className="space-y-4">
-              {items.map((item) => (
-                <div key={item.productId} className="bg-white p-4 rounded shadow">
+              {items.map((item) => {
+                const price = Number(item.price) || 100000;
+                const qty = Number(item.quantity) || 0;
+                const subTotal = price * qty;
 
-                  <div className="flex gap-4 items-start">
+                return (
+                  <div key={item.productId} className="bg-white p-4 rounded shadow">
+                    <div className="flex gap-4 items-start">
 
-                    {/* IMAGE */}
-                    <img
-                      src={item.image || 'https://via.placeholder.com/100'}
-                      className="w-24 h-24 object-cover rounded"
-                    />
+                      {/* IMAGE */}
+                      <img
+                        src={item.image || 'https://via.placeholder.com/100'}
+                        className="w-24 h-24 object-cover rounded"
+                        alt={item.name}
+                      />
 
-                    <div className="flex-1">
-                      <p className="font-semibold">
-                        {item.name || `Product ${item.productId}`}
-                      </p>
+                      <div className="flex-1">
+                        <p className="font-semibold">
+                          {item.name || `Product ${item.productId}`}
+                        </p>
 
-                      <p className="text-red-600">
-                        {Number(item.price || 100000).toLocaleString()}đ
-                      </p>
+                        <p className="text-red-600">
+                          {formatPrice(price)}
+                        </p>
 
-                      <p className="text-sm text-gray-500">
-                        Tạm tính: {(item.quantity * (item.price || 100000)).toLocaleString()}đ
-                      </p>
+                        <p className="text-sm text-gray-500">
+                          Tạm tính: {formatPrice(subTotal)}
+                        </p>
 
-                      {/* QTY */}
-                      <div className="flex items-center gap-3 my-2">
+                        {/* QTY */}
+                        <div className="flex items-center gap-3 my-2">
+                          <button
+                            onClick={() => handleUpdateQty(item.productId, qty - 1)}
+                            className="px-3 py-1 bg-gray-200 rounded"
+                          >
+                            -
+                          </button>
+
+                          <span>{qty}</span>
+
+                          <button
+                            onClick={() => handleUpdateQty(item.productId, qty + 1)}
+                            className="px-3 py-1 bg-gray-200 rounded"
+                          >
+                            +
+                          </button>
+                        </div>
+
                         <button
-                          onClick={() => handleUpdateQty(item.productId, item.quantity - 1)}
-                          className="px-3 bg-gray-200 rounded"
-                        >-</button>
-
-                        <span>{item.quantity}</span>
-
-                        <button
-                          onClick={() => handleUpdateQty(item.productId, item.quantity + 1)}
-                          className="px-3 bg-gray-200 rounded"
-                        >+</button>
+                          onClick={() => handleRemoveItem(item.productId)}
+                          className="text-red-500 hover:underline"
+                        >
+                          Xóa
+                        </button>
                       </div>
-
-                      <button
-                        onClick={() => handleRemoveItem(item.productId)}
-                        className="text-red-500"
-                      >
-                        Xóa
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* SUMMARY */}
@@ -132,17 +154,17 @@ export default function CartPage() {
 
               <div className="flex justify-between">
                 <span>Tạm tính</span>
-                <span>{total.toLocaleString()}đ</span>
+                <span>{formatPrice(total)}</span>
               </div>
 
               <div className="pt-3 border-t flex justify-between font-bold text-lg">
                 <span>Thành tiền</span>
-                <span>{total.toLocaleString()}đ</span>
+                <span>{formatPrice(total)}</span>
               </div>
 
               <button
                 onClick={() => navigate('/checkout')}
-                className="w-full bg-red-600 text-white py-3 rounded"
+                className="w-full bg-red-600 text-white py-3 rounded hover:bg-red-700"
               >
                 Thanh toán
               </button>

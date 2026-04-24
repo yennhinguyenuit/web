@@ -6,6 +6,7 @@ const {
   createOrder,
   getMyOrders,
   getOrderDetail,
+  cancelOrder,
 } = require("../controllers/order.controller");
 
 router.use(authMiddleware);
@@ -13,5 +14,6 @@ router.use(authMiddleware);
 router.post("/", createOrder);
 router.get("/", getMyOrders);
 router.get("/:id", getOrderDetail);
+router.patch('/:id/status', cancelOrder);
 
 module.exports = router;

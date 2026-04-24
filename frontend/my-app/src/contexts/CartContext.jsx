@@ -14,7 +14,7 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [], totalQuantity: 0 });
   const { user } = useAuth();
 
-  // 🔥 LOAD từ local (QUAN TRỌNG NHẤT)
+  // LOAD từ local (QUAN TRỌNG NHẤT)
   useEffect(() => {
     const local = JSON.parse(localStorage.getItem("cart") || "[]");
 
@@ -24,7 +24,7 @@ export const CartProvider = ({ children }) => {
     });
   }, []);
 
-  // 🔥 SAVE LOCAL + STATE (DUY NHẤT)
+  // SAVE LOCAL + STATE (DUY NHẤT)
   const saveLocal = (items) => {
     localStorage.setItem("cart", JSON.stringify(items));
 
@@ -34,7 +34,7 @@ export const CartProvider = ({ children }) => {
     });
   };
 
-  // 🔥 ADD TO CART (KHÔNG overwrite server)
+  // ADD TO CART (KHÔNG overwrite server)
   const addToCart = async (product, quantity = 1) => {
     const items = [...cart.items];
 
@@ -54,10 +54,10 @@ export const CartProvider = ({ children }) => {
       });
     }
 
-    // 👉 update UI ngay
+    // update UI ngay
     saveLocal(items);
 
-    // 👉 sync server (KHÔNG reload lại cart)
+    // sync server (KHÔNG reload lại cart)
     if (navigator.onLine && user) {
       try {
         await cartAPI.addToCart(product.id, quantity);
@@ -67,7 +67,7 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  // 🔄 UPDATE QUANTITY
+  // UPDATE QUANTITY
   const updateQuantity = (productId, quantity) => {
     if (quantity < 1) return;
 
@@ -80,7 +80,7 @@ export const CartProvider = ({ children }) => {
     saveLocal(items);
   };
 
-  // ❌ REMOVE
+  // REMOVE
   const removeItem = (productId) => {
     const items = cart.items.filter(
       i => String(i.productId) !== String(productId)
@@ -89,13 +89,13 @@ export const CartProvider = ({ children }) => {
     saveLocal(items);
   };
 
-  // 🧹 CLEAR
+  // CLEAR
   const clearCart = () => {
     localStorage.removeItem("cart");
     saveLocal([]);
   };
 
-  // 🔄 BACKGROUND SYNC (PWA CHUẨN)
+  // BACKGROUND SYNC (PWA CHUẨN)
   useEffect(() => {
     const syncCart = async () => {
       try {
