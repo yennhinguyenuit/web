@@ -9,6 +9,8 @@ import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
+import CouponsPage from './pages/admin/CouponsPage';
+import FlashSalePage from './pages/admin/FlashSalePage';
 import ReviewsPage from './pages/ReviewsPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -159,6 +161,8 @@ useEffect(() => {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="customers" element={<AdminCustomers />} />
         <Route path="reports" element={<AdminReports />} />
+        <Route path="coupons" element={<CouponsPage />} />
+        <Route path="flash-sale" element={<FlashSalePage />} />
       </Route>
     </Routes>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import OrderTimeline from '../components/OrderTimeline'; 
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -62,6 +63,14 @@ export default function OrderDetailPage() {
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
 
+      {/* 🔥 TIMELINE (THÊM Ở ĐÂY) */}
+      <div className="bg-white p-4 rounded shadow">
+        <p className="font-semibold mb-3 text-red-600">
+          📦 Trạng thái đơn hàng
+        </p>
+        <OrderTimeline status={order.status} />
+      </div>
+
       {/* 🚚 VẬN CHUYỂN */}
       <div className="bg-white p-4 rounded shadow">
         <p className="font-semibold mb-2">Thông tin vận chuyển</p>
@@ -69,7 +78,7 @@ export default function OrderDetailPage() {
       </div>
 
       {/* 📍 ĐỊA CHỈ */}
-     <div className="bg-white p-4 rounded shadow">
+      <div className="bg-white p-4 rounded shadow">
         <p className="font-semibold mb-2">Địa chỉ nhận hàng</p>
 
         <p>{order.address?.name}</p>
@@ -87,7 +96,8 @@ export default function OrderDetailPage() {
           }
         </p>
       </div>
-      {/* 🛍️ SẢN PHẨM (ĐÃ FIX FULL UI) */}
+
+      {/* 🛍️ SẢN PHẨM */}
       <div className="bg-white p-4 rounded shadow">
         <p className="font-semibold mb-3">Sản phẩm</p>
 
@@ -97,17 +107,13 @@ export default function OrderDetailPage() {
             className="flex items-center justify-between border-b py-3"
           >
 
-            {/* LEFT */}
             <div className="flex items-center gap-3">
-
-              {/* ẢNH */}
               <img
                 src={item.product?.image || '/no-image.png'}
                 alt={item.product?.name}
                 className="w-16 h-16 object-cover rounded"
               />
 
-              {/* INFO */}
               <div>
                 <p className="font-medium">
                   {item.product?.name || 'Sản phẩm'}
@@ -119,20 +125,18 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            {/* GIÁ */}
             <div className="text-right">
-             {item.price ? (
+              {item.price && (
                 <p className="font-medium">
                   {Number(item.price).toLocaleString()}đ
                 </p>
-              ) : null}
+              )}
             </div>
 
           </div>
         ))}
 
-        {/* TOTAL */}
-        <div className="flex justify-between mt-4 font-bold">
+        <div className="flex justify-between mt-4 font-bold text-red-600">
           <span>Thành tiền:</span>
           <span>{Number(order.total).toLocaleString()}đ</span>
         </div>
@@ -143,16 +147,17 @@ export default function OrderDetailPage() {
         {order.status === 'pending' && (
           <button
             onClick={handleCancel}
-            className="px-4 py-2 border rounded text-red-600"
+            className="px-4 py-2 border rounded text-red-600 hover:bg-red-50"
           >
             Hủy đơn hàng
           </button>
         )}
 
-        <button className="px-4 py-2 border rounded">
+        <button className="px-4 py-2 border rounded hover:bg-gray-100">
           Liên hệ Shop
         </button>
       </div>
+
     </div>
   );
 }

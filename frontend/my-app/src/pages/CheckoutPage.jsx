@@ -16,8 +16,7 @@ export default function CheckoutPage() {
     ward: '',
     district: '',
     city: '',
-    note: '',
-    shipping: 'standard', // 
+    shipping: 'standard',
     payment: 'cod'
   });
 
@@ -34,10 +33,7 @@ export default function CheckoutPage() {
   };
 
   const subtotal = items.reduce((t, i) => t + i.price * i.quantity, 0);
-
-  // ✅ FIX: dùng express thay vì fast
   const shippingFee = form.shipping === 'express' ? 50000 : 0;
-
   const total = subtotal + shippingFee - discount;
 
   // APPLY COUPON
@@ -69,77 +65,73 @@ export default function CheckoutPage() {
     }
   };
 
-  // SUBMIT
-const handleSubmit = async () => {
-  if (!form.firstName || !form.lastName || !form.phone || !form.address) {
-    alert('Nhập đầy đủ thông tin!');
-    return;
-  }
-
-  if (items.length === 0) {
-    alert('Giỏ hàng trống!');
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    // 🚀 GỬI TRỰC TIẾP ITEMS
-    const res = await fetch('http://localhost:5000/api/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({
-        shippingAddress: {
-          name: `${form.firstName} ${form.lastName}`,
-          phone: form.phone,
-          address: form.address,
-          ward: form.ward,
-          district: form.district,
-          city: form.city
-        },
-        shippingMethodCode: form.shipping,
-        paymentMethodCode: form.payment,
-        couponCode: coupon || null,
-
-        // 🔥 QUAN TRỌNG NHẤT
-        items: items.map(i => ({
-          productId: i.productId,
-          quantity: i.quantity
-        }))
-      })
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      alert(result.message || 'Lỗi tạo đơn');
+  const handleSubmit = async () => {
+    if (!form.firstName || !form.lastName || !form.phone || !form.address) {
+      alert('Nhập đầy đủ thông tin!');
       return;
     }
 
-    const order = result.data;
+    if (items.length === 0) {
+      alert('Giỏ hàng trống!');
+      return;
+    }
 
-    clearCart();
-    navigate(`/order-success?orderId=${order.id}&code=${order.code}`);
+    setLoading(true);
 
-  } catch (err) {
-    console.error(err);
-    alert('Lỗi server');
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const res = await fetch('http://localhost:5000/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          shippingAddress: {
+            name: `${form.firstName} ${form.lastName}`,
+            phone: form.phone,
+            address: form.address,
+            ward: form.ward,
+            district: form.district,
+            city: form.city
+          },
+          shippingMethodCode: form.shipping,
+          paymentMethodCode: form.payment,
+          couponCode: coupon || null,
+          items: items.map(i => ({
+            productId: i.productId,
+            quantity: i.quantity
+          }))
+        })
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        alert(result.message || 'Lỗi tạo đơn');
+        return;
+      }
+
+      clearCart();
+      navigate('/order-success');
+
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="bg-gray-50 min-h-screen py-10 px-6">
-      <div className="max-w-7xl mx-auto grid grid-cols-3 gap-8">
+    <div className="bg-gray-50 min-h-screen py-6 px-4">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* LEFT */}
-        <div className="col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
 
+          {/* CONTACT */}
           <Section title="Thông tin liên hệ" step={1}>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input name="firstName" placeholder="Họ" onChange={handleChange}/>
               <Input name="lastName" placeholder="Tên" onChange={handleChange}/>
               <Input name="email" placeholder="Email" onChange={handleChange}/>
@@ -147,15 +139,17 @@ const handleSubmit = async () => {
             </div>
           </Section>
 
+          {/* ADDRESS */}
           <Section title="Địa chỉ giao hàng" step={2}>
             <Input name="address" placeholder="Địa chỉ" onChange={handleChange}/>
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <Input name="ward" placeholder="Phường/Xã" onChange={handleChange}/>
               <Input name="district" placeholder="Quận/Huyện" onChange={handleChange}/>
             </div>
             <Input name="city" placeholder="Tỉnh/TP" onChange={handleChange} className="mt-4"/>
           </Section>
 
+          {/* SHIPPING */}
           <Section title="Phương thức vận chuyển" step={3}>
             <Option
               label="Giao hàng tiêu chuẩn"
@@ -171,6 +165,7 @@ const handleSubmit = async () => {
             />
           </Section>
 
+          {/* PAYMENT */}
           <Section title="Phương thức thanh toán" step={4}>
             <Option
               label="Thanh toán khi nhận hàng"
@@ -187,62 +182,79 @@ const handleSubmit = async () => {
         </div>
 
         {/* RIGHT */}
-        <div className="bg-white p-6 rounded shadow sticky top-6 h-fit">
+        <div className="lg:col-span-1">
+          <div className="bg-white p-5 rounded shadow lg:sticky lg:top-6">
 
-          <h2 className="font-bold text-xl mb-4 text-red-600">Đơn hàng</h2>
+            <h2 className="font-bold text-lg mb-4 text-red-600">Đơn hàng</h2>
 
-          {items.map(i => (
-            <div key={i.productId} className="flex gap-3 mb-3 items-center">
-              <img src={i.image || '/no-image.png'} className="w-16 h-16 object-cover rounded border"/>
-              <div className="flex-1">
-                <p>{i.name}</p>
-                <p className="text-sm">SL: {i.quantity}</p>
+            {items.map(i => (
+              <div key={i.productId} className="flex gap-3 mb-3">
+                <img src={i.image} className="w-14 h-14 object-cover rounded"/>
+                <div className="flex-1">
+                  <p className="text-sm">{i.name}</p>
+                  <p className="text-xs">SL: {i.quantity}</p>
+                </div>
+                <p className="text-sm">{(i.price * i.quantity).toLocaleString()}đ</p>
               </div>
-              <p>{(i.price * i.quantity).toLocaleString()}đ</p>
+            ))}
+
+            {/* COUPON */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+              <input
+                value={coupon}
+                onChange={(e)=>setCoupon(e.target.value)}
+                placeholder="Nhập mã giảm giá"
+                className="border px-3 py-2 flex-1 rounded"
+              />
+              <button
+                onClick={applyCoupon}
+                className="bg-red-600 text-white px-4 py-2 rounded"
+              >
+                {loadingCoupon ? '...' : 'Áp dụng'}
+              </button>
             </div>
-          ))}
 
-          <div className="flex gap-2 mb-3">
-            <input value={coupon} onChange={(e)=>setCoupon(e.target.value)} className="border px-3 py-2 flex-1"/>
-            <button onClick={applyCoupon} className="bg-red-600 text-white px-4">
-              {loadingCoupon ? '...' : 'Áp dụng'}
+            {couponMsg && (
+              <p className={`text-sm mb-2 ${
+                discount > 0 ? "text-green-600" : "text-red-500"
+              }`}>
+                {couponMsg}
+              </p>
+            )}
+
+            <Row label="Tạm tính" value={subtotal}/>
+            <Row label="Ship" value={shippingFee}/>
+            <Row label="Giảm" value={`- ${discount}`}/>
+
+            <div className="flex justify-between font-bold mt-2">
+              <span>Tổng</span>
+              <span className="text-red-600">{total.toLocaleString()}đ</span>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              className="w-full bg-red-600 text-white py-3 mt-4 rounded"
+            >
+              {loading ? 'Đang xử lý...' : 'Đặt hàng'}
             </button>
+
           </div>
-
-          {couponMsg && <p className="text-sm mb-2">{couponMsg}</p>}
-
-          <Row label="Tạm tính" value={subtotal}/>
-          <Row label="Ship" value={shippingFee}/>
-          <Row label="Giảm" value={`- ${discount}`} />
-
-          <div className="flex justify-between font-bold mt-3">
-            <span>Tổng</span>
-            <span className="text-red-600">{total.toLocaleString()}đ</span>
-          </div>
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-red-600 text-white py-3 mt-4 rounded"
-          >
-            {loading ? 'Đang xử lý...' : 'Đặt hàng'}
-          </button>
-
         </div>
+
       </div>
     </div>
   );
 }
 
-// UI
+// COMPONENT
 function Section({ title, step, children }) {
   return (
-    <div className="bg-white p-6 rounded shadow">
-      <div className="flex gap-3 mb-3">
-        <div className="bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-full">
+    <div className="bg-white p-5 rounded shadow">
+      <div className="flex gap-2 mb-3">
+        <div className="bg-red-600 text-white w-7 h-7 flex items-center justify-center rounded-full">
           {step}
         </div>
-        <h2>{title}</h2>
+        <h2 className="font-medium">{title}</h2>
       </div>
       {children}
     </div>
@@ -250,7 +262,7 @@ function Section({ title, step, children }) {
 }
 
 function Input(props) {
-  return <input {...props} className="border p-2 w-full rounded"/>;
+  return <input {...props} className="border p-2 w-full rounded text-sm"/>;
 }
 
 function Option({ label, checked, onChange, price }) {
@@ -267,7 +279,7 @@ function Option({ label, checked, onChange, price }) {
 
 function Row({ label, value }) {
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between text-sm">
       <span>{label}</span>
       <span>{typeof value === 'number' ? value.toLocaleString() + 'đ' : value}</span>
     </div>

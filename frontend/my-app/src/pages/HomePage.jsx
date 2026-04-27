@@ -107,9 +107,9 @@ function HomePage() {
             onChange={(e) => setPrice(e.target.value)}
           >
             <option value="">Tất cả giá</option>
-            <option value="0-500">0 - 500k</option>
-            <option value="500-1000">500k - 1tr</option>
-            <option value="1000+">1tr+</option>
+            <option value="0-500">0 - 500.000</option>
+            <option value="500-1000">500.000 - 1.000.000</option>
+            <option value="1000+">Trên 1.000.000</option>
           </select>
 
           {/* SORT */}

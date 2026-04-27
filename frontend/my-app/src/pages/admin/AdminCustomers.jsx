@@ -1,117 +1,121 @@
-import { useEffect, useMemo, useState } from 'react';
-import { adminAPI } from '../../services/api';
+import { useEffect, useState } from "react";
+import { userAPI } from "../../services/api";
 
-const formatCurrency = (value) => `${Number(value || 0).toLocaleString()}đ`;
-const formatDateTime = (value) => {
-  if (!value) return '---';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '---';
-  return date.toLocaleString('vi-VN');
-};
-
-export default function AdminCustomers() {
-  const [customers, setCustomers] = useState([]);
-  const [keyword, setKeyword] = useState('');
+export default function AdminUsers() {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    adminAPI
-      .getCustomers()
-      .then((res) => {
-        setCustomers(res.data || []);
-        setError('');
-      })
-      .catch((err) => {
-        console.error(err);
-        setError(err.message || 'Không tải được khách hàng');
-      })
-      .finally(() => setLoading(false));
+    fetchUsers();
   }, []);
 
-  const filteredCustomers = useMemo(() => {
-    const kw = keyword.trim().toLowerCase();
-    if (!kw) return customers;
+  const fetchUsers = async () => {
+    try {
+      const res = await userAPI.getUsers();
+      setUsers(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return customers.filter((customer) =>
-      [customer.name, customer.email, customer.latestOrderCode]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(kw))
-    );
-  }, [customers, keyword]);
+  const handleDelete = async (id) => {
+    if (!window.confirm("Xóa user này?")) return;
+
+    try {
+      await userAPI.deleteUser(id);
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) {
-    return <div className="text-slate-600">Đang tải khách hàng...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-600">{error}</div>;
+    return <div className="text-gray-500">Đang tải users...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white shadow-sm border border-slate-100 p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Khách hàng</h1>
-          <p className="text-slate-500 mt-1">Theo dõi khách đã mua hàng, tổng đơn và giá trị đơn hàng</p>
-        </div>
+    <div className="p-6 space-y-6">
 
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Tìm theo tên, email, mã đơn..."
-          className="border border-slate-300 rounded-xl px-4 py-3 w-full lg:w-80"
-        />
+      {/* HEADER */}
+      <div>
+        <h1 className="text-3xl font-bold text-red-600">
+          👤 Quản lý Users
+        </h1>
+        <p className="text-gray-500">
+          Danh sách người dùng hệ thống
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {filteredCustomers.map((customer) => (
-          <div key={customer.id} className="rounded-2xl bg-white shadow-sm border border-slate-100 p-5 space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl font-bold shrink-0">
-                {customer.name?.charAt(0)?.toUpperCase() || customer.email?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
+      {/* TABLE */}
+      <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-red-100">
 
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-800 truncate">{customer.name || 'Chưa có tên'}</p>
-                <p className="text-slate-500 text-sm break-all">{customer.email || '---'}</p>
-              </div>
-            </div>
+        <table className="w-full text-center">
 
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-slate-500">Số đơn</p>
-                <p className="mt-1 text-lg font-semibold text-slate-800">{customer.orderCount || 0}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-slate-500">Đã thanh toán</p>
-                <p className="mt-1 text-lg font-semibold text-slate-800">{customer.paidOrderCount || 0}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3 col-span-2">
-                <p className="text-slate-500">Tổng chi tiêu</p>
-                <p className="mt-1 text-lg font-semibold text-red-600">{formatCurrency(customer.totalSpent)}</p>
-              </div>
-            </div>
+          {/* HEAD */}
+          <thead className="bg-red-500 text-white">
+            <tr>
+              <th className="p-4">Tên</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Delete</th>
+            </tr>
+          </thead>
 
-            <div className="space-y-1 text-sm text-slate-600">
-              <p>
-                <span className="font-medium text-slate-700">Đơn gần nhất:</span>{' '}
-                {customer.latestOrderCode || '---'}
-              </p>
-              <p>
-                <span className="font-medium text-slate-700">Lần mua gần nhất:</span>{' '}
-                {formatDateTime(customer.lastOrderAt)}
-              </p>
-            </div>
+          {/* BODY */}
+          <tbody>
+            {users.map((u) => (
+              <tr
+                key={u.id}
+                className="border-t hover:bg-red-50 transition"
+              >
+                {/* NAME */}
+                <td className="p-4 font-medium text-gray-800">
+                  {u.name}
+                </td>
+
+                {/* EMAIL */}
+                <td className="text-gray-600">
+                  {u.email}
+                </td>
+
+                {/* ROLE */}
+                <td>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      u.role?.name === "admin"
+                        ? "bg-red-100 text-red-600"
+                        : "bg-pink-100 text-pink-600"
+                    }`}
+                  >
+                    {u.role?.name}
+                  </span>
+                </td>
+
+                {/* DELETE */}
+                <td>
+                  <button
+                    onClick={() => handleDelete(u.id)}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-105 transition"
+                  >
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+
+        </table>
+
+        {/* EMPTY */}
+        {users.length === 0 && (
+          <div className="p-6 text-gray-400 text-center">
+            Không có user
           </div>
-        ))}
+        )}
       </div>
 
-      {!filteredCustomers.length ? (
-        <div className="rounded-2xl bg-white shadow-sm border border-slate-100 p-6 text-slate-500">
-          Chưa có khách hàng phù hợp.
-        </div>
-      ) : null}
     </div>
   );
 }

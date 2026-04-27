@@ -56,11 +56,17 @@ function AdminLayout() {
       ? 'Khách hàng'
       : location.pathname.includes('/admin/reports')
       ? 'Báo cáo'
+      : location.pathname.includes('/admin/coupons')
+      ? 'Mã giảm giá'
+      : location.pathname.includes('/admin/flash-sale')
+      ? 'Flash Sale'
       : 'Admin Panel';
 
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="flex min-h-screen">
+
+        {/* SIDEBAR */}
         <aside className="w-72 bg-white border-r border-slate-200 shadow-sm p-6 flex flex-col">
           <div className="mb-8">
             <p className="text-sm text-slate-500">Trang quản trị</p>
@@ -92,8 +98,20 @@ function AdminLayout() {
               <span>📈</span>
               <span>Báo cáo</span>
             </NavLink>
+
+            {/* NEW */}
+            <NavLink to="/admin/coupons" className={navClass}>
+              <span>🏷️</span>
+              <span>Coupons</span>
+            </NavLink>
+
+            <NavLink to="/admin/flash-sale" className={navClass}>
+              <span>⚡</span>
+              <span>Flash Sale</span>
+            </NavLink>
           </nav>
 
+          {/* USER */}
           <div className="mt-auto pt-6 border-t border-slate-200">
             <div className="mb-4 rounded-2xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Đang đăng nhập</p>
@@ -110,11 +128,16 @@ function AdminLayout() {
           </div>
         </aside>
 
+        {/* MAIN */}
         <main className="flex-1">
           <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">{pageTitle}</h2>
-              <p className="text-sm text-slate-500">Quản lý hệ thống cửa hàng</p>
+              <h2 className="text-2xl font-bold text-slate-800">
+                {pageTitle}
+              </h2>
+              <p className="text-sm text-slate-500">
+                Quản lý hệ thống cửa hàng
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -131,6 +154,7 @@ function AdminLayout() {
             <Outlet />
           </div>
         </main>
+
       </div>
     </div>
   );

@@ -17,6 +17,8 @@ const wishlistRoutes = require("./routes/wishlist.routes");
 const reviewRoutes = require("./routes/review.routes");
 const couponRoutes = require("./routes/coupon.routes");
 const { isAppError } = require("./utils/app-error");
+const statsRoutes = require("./routes/stats.routes");
+const userRoutes = require("./routes/user.routes");
 
 const app = express();
 
@@ -71,6 +73,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/stats", statsRoutes);
+app.use("/api/users", userRoutes);
 
 app.use((req, res) => {
   return res.status(404).json({

@@ -27,7 +27,7 @@ module.exports = [
       "L",
       "XL"
     ]
-  }
+  },
   {
     "name": "Basic White T-Shirt",
     "slug": "basic-white-t-shirt",

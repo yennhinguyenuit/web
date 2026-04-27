@@ -1,37 +1,78 @@
 export default function OrderTimeline({ status }) {
-  const steps = ['pending', 'confirmed', 'shipping', 'completed'];
+  const steps = [
+    { key: 'pending', label: 'Chờ xử lý', icon: '📄' },
+    { key: 'confirmed', label: 'Đã xác nhận', icon: '💳' },
+    { key: 'shipping', label: 'Đang giao', icon: '🚚' },
+    { key: 'completed', label: 'Hoàn thành', icon: '⭐' }
+  ];
 
-  const labels = {
-    pending: 'Chờ xử lý',
-    confirmed: 'Đã xác nhận',
-    shipping: 'Đang giao',
-    completed: 'Hoàn thành'
-  };
-
-  const currentIndex = steps.indexOf(status);
+  const currentIndex = steps.findIndex(s => s.key === status);
 
   return (
-    <div className="flex justify-between items-center mb-6">
-      {steps.map((step, index) => (
-        <div key={step} className="flex-1 text-center relative">
+    <div className="flex items-center justify-between w-full mb-6">
 
-          {/* line */}
-          {index !== 0 && (
-            <div className={`absolute top-3 left-0 w-full h-1 
-              ${index <= currentIndex ? 'bg-red-500' : 'bg-gray-300'}`} />
-          )}
+      {steps.map((step, index) => {
+        const isDone = index < currentIndex;
+        const isCurrent = index === currentIndex;
 
-          {/* dot */}
-          <div className={`w-6 h-6 mx-auto rounded-full z-10 relative
-            ${index <= currentIndex ? 'bg-red-500' : 'bg-gray-300'}`} />
+        return (
+          <div key={step.key} className="flex-1 flex items-center">
 
-          {/* text */}
-          <p className={`mt-2 text-sm 
-            ${index <= currentIndex ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
-            {labels[step]}
-          </p>
-        </div>
-      ))}
+            {/* STEP */}
+            <div className="flex flex-col items-center">
+
+              {/* CIRCLE */}
+              <div
+                className={`
+                  w-10 h-10 flex items-center justify-center 
+                  rounded-full border-2 text-lg transition-all
+
+                  ${isCurrent
+                    ? "bg-red-500 border-red-500 text-white shadow-md scale-110"
+                    : isDone
+                    ? "border-red-500 text-red-500 bg-white"
+                    : "border-gray-300 text-gray-300 bg-white"}
+                `}
+              >
+                {step.icon}
+              </div>
+
+              {/* TEXT */}
+              <p
+                className={`mt-2 text-xs ${
+                  isCurrent
+                    ? "text-red-600 font-semibold"
+                    : isDone
+                    ? "text-red-500"
+                    : "text-gray-400"
+                }`}
+              >
+                {step.label}
+              </p>
+
+            </div>
+
+            {/* LINE */}
+            {index < steps.length - 1 && (
+              <div className="flex-1 h-[2px] mx-2 relative">
+
+                {/* base */}
+                <div className="absolute inset-0 bg-gray-300" />
+
+                {/* active */}
+                <div
+                  className={`absolute inset-0 transition-all duration-500 ${
+                    index < currentIndex ? "bg-red-500" : "bg-transparent"
+                  }`}
+                />
+
+              </div>
+            )}
+
+          </div>
+        );
+      })}
+
     </div>
   );
 }
