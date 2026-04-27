@@ -283,10 +283,14 @@ const createOrder = async (req, res) => {
         ? items.map(i => ({
             productId: i.productId,
             quantity: i.quantity,
+            color: i.color || null,
+            size: i.size || null,
           }))
         : cart.items.map(i => ({
             productId: i.productId,
             quantity: i.quantity,
+            color: i.color || null,
+            size: i.size || null,
           }));
 
       const productIds = sourceItems.map(i => i.productId);

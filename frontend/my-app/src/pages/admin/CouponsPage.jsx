@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { couponAPI } from "../../services/api";
 
 export default function CouponsPage() {
@@ -9,18 +9,18 @@ export default function CouponsPage() {
   });
 
   // 🔥 LOAD COUPONS
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     try {
       const res = await couponAPI.getCoupons();
       setCoupons(res.data || []);
     } catch (err) {
       console.error("Lỗi load coupon", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCoupons();
-  }, []);
+  }, [fetchCoupons]);
 
   // 🔥 ADD COUPON
   const handleAdd = async () => {

@@ -20,7 +20,10 @@ export function AvatarImage(props) {
 
 export function AvatarFallback(props) {
   return (
-    <AvatarPrimitive.Fallback className="flex items-center justify-center bg-gray-300 w-full h-full">
+    <AvatarPrimitive.Fallback
+      className="flex items-center justify-center bg-gray-300 w-full h-full"
+      {...props}
+    >
       ?
     </AvatarPrimitive.Fallback>
   );

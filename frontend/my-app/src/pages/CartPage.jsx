@@ -7,6 +7,8 @@ export default function CartPage() {
 
   const items = cart?.items || [];
   const totalQuantity = cart?.totalQuantity || 0;
+  const getCartItemKey = (item) =>
+    `${item.productId}:${item.color || ''}:${item.size || ''}`;
 
   // format tiền
   const formatPrice = (num) => {
@@ -21,17 +23,17 @@ export default function CartPage() {
   }, 0);
 
   // xóa item
-  const handleRemoveItem = (productId) => {
-    removeItem(productId);
+  const handleRemoveItem = (item) => {
+    removeItem(item);
   };
 
   // cập nhật số lượng (auto xóa nếu = 0)
-  const handleUpdateQty = (productId, qty) => {
+  const handleUpdateQty = (item, qty) => {
     if (qty <= 0) {
-      removeItem(productId);
+      removeItem(item);
       return;
     }
-    updateQuantity(productId, qty);
+    updateQuantity(item, qty);
   };
 
   const handleClearCart = () => {
@@ -88,12 +90,12 @@ export default function CartPage() {
                 const subTotal = price * qty;
 
                 return (
-                  <div key={item.productId} className="bg-white p-4 rounded shadow">
+                  <div key={getCartItemKey(item)} className="bg-white p-4 rounded shadow">
                     <div className="flex gap-4 items-start">
 
                       {/* IMAGE */}
                       <img
-                        src={item.image || 'https://via.placeholder.com/100'}
+                        src={item.image || item.thumbnail || 'https://via.placeholder.com/100'}
                         className="w-24 h-24 object-cover rounded"
                         alt={item.name}
                       />
@@ -102,6 +104,14 @@ export default function CartPage() {
                         <p className="font-semibold">
                           {item.name || `Product ${item.productId}`}
                         </p>
+
+                        {(item.color || item.size) && (
+                          <p className="text-sm text-gray-500">
+                            {[item.color && `Màu: ${item.color}`, item.size && `Size: ${item.size}`]
+                              .filter(Boolean)
+                              .join(' / ')}
+                          </p>
+                        )}
 
                         <p className="text-red-600">
                           {formatPrice(price)}
@@ -114,7 +124,7 @@ export default function CartPage() {
                         {/* QTY */}
                         <div className="flex items-center gap-3 my-2">
                           <button
-                            onClick={() => handleUpdateQty(item.productId, qty - 1)}
+                            onClick={() => handleUpdateQty(item, qty - 1)}
                             className="px-3 py-1 bg-gray-200 rounded"
                           >
                             -
@@ -123,7 +133,7 @@ export default function CartPage() {
                           <span>{qty}</span>
 
                           <button
-                            onClick={() => handleUpdateQty(item.productId, qty + 1)}
+                            onClick={() => handleUpdateQty(item, qty + 1)}
                             className="px-3 py-1 bg-gray-200 rounded"
                           >
                             +
@@ -131,7 +141,7 @@ export default function CartPage() {
                         </div>
 
                         <button
-                          onClick={() => handleRemoveItem(item.productId)}
+                          onClick={() => handleRemoveItem(item)}
                           className="text-red-500 hover:underline"
                         >
                           Xóa

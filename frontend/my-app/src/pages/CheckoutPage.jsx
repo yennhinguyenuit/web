@@ -6,6 +6,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
   const items = cart?.items || [];
+  const getCartItemKey = (item) =>
+    `${item.productId}:${item.color || ''}:${item.size || ''}`;
 
   const [form, setForm] = useState({
     firstName: '',
@@ -99,7 +101,9 @@ export default function CheckoutPage() {
           couponCode: coupon || null,
           items: items.map(i => ({
             productId: i.productId,
-            quantity: i.quantity
+            quantity: i.quantity,
+            color: i.color || null,
+            size: i.size || null
           }))
         })
       });
@@ -188,10 +192,21 @@ export default function CheckoutPage() {
             <h2 className="font-bold text-lg mb-4 text-red-600">Đơn hàng</h2>
 
             {items.map(i => (
-              <div key={i.productId} className="flex gap-3 mb-3">
-                <img src={i.image} className="w-14 h-14 object-cover rounded"/>
+              <div key={getCartItemKey(i)} className="flex gap-3 mb-3">
+                <img
+                  src={i.image || i.thumbnail || 'https://via.placeholder.com/100'}
+                  alt={i.name}
+                  className="w-14 h-14 object-cover rounded"
+                />
                 <div className="flex-1">
                   <p className="text-sm">{i.name}</p>
+                  {(i.color || i.size) && (
+                    <p className="text-xs text-gray-500">
+                      {[i.color && `Màu: ${i.color}`, i.size && `Size: ${i.size}`]
+                        .filter(Boolean)
+                        .join(' / ')}
+                    </p>
+                  )}
                   <p className="text-xs">SL: {i.quantity}</p>
                 </div>
                 <p className="text-sm">{(i.price * i.quantity).toLocaleString()}đ</p>

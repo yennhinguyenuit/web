@@ -8,7 +8,7 @@ import { CartProvider } from './contexts/CartContext.jsx';
 import { registerSW } from 'virtual:pwa-register';
 
 // Đăng ký Service Worker (có log để debug)
-const updateSW = registerSW({
+registerSW({
   onNeedRefresh() {
     console.log('🔄 Có phiên bản mới, cần refresh');
   },

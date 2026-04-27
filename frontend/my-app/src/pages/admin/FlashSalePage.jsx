@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function FlashSalePage() {
   const [sales, setSales] = useState([]);
@@ -9,16 +9,16 @@ export default function FlashSalePage() {
     end: ""
   });
 
-  // LOAD LIST
-  useEffect(() => {
-    fetchSales();
-  }, []);
-
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
     const res = await fetch("http://localhost:5000/api/flash-sale/active");
     const data = await res.json();
     if (data.data) setSales([data.data]);
-  };
+  }, []);
+
+  // LOAD LIST
+  useEffect(() => {
+    fetchSales();
+  }, [fetchSales]);
 
   // CREATE
   const handleCreate = async () => {

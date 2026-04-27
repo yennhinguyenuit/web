@@ -9,14 +9,19 @@ export default function WishlistPage() {
   const { addToCart } = useCart();
   const { items, loading, toggleWishlist } = useWishlist();
 
-  const handleAddToCart = async (productId) => {
+  const handleAddToCart = async (product) => {
     if (!user) {
       navigate('/login');
       return;
     }
 
+    if (product.colors?.length || product.sizes?.length) {
+      navigate(`/products/${product.id}`);
+      return;
+    }
+
     try {
-      await addToCart(productId, 1);
+      await addToCart(product, 1);
       alert('Đã thêm vào giỏ hàng');
     } catch (error) {
       alert(error.message || 'Không thể thêm vào giỏ hàng');
@@ -35,7 +40,7 @@ export default function WishlistPage() {
     }
 
     try {
-      await addToCart(product.id, 1);
+      await addToCart(product, 1);
       navigate('/checkout');
     } catch (error) {
       alert(error.message || 'Không thể tạo đơn mua ngay');
@@ -79,7 +84,7 @@ export default function WishlistPage() {
 
                 <div className="grid sm:grid-cols-3 gap-3">
                   <button
-                    onClick={() => handleAddToCart(product.id)}
+                    onClick={() => handleAddToCart(product)}
                     className="px-4 py-2 border border-red-600 text-red-600 rounded hover:bg-red-50"
                   >
                     Thêm vào giỏ

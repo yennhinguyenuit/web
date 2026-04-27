@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import { productAPI } from '../services/api';
 import { useWishlist } from '../hooks/useWishlist';
-import { useCart } from '../contexts/CartContext'; // 🔥 THÊM
 
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,11 +13,9 @@ export default function ProductsPage() {
   const [keyword, setKeyword] = useState(searchParams.get('search') || '');
 
   const { isWishlisted, toggleWishlist } = useWishlist();
-  const { addToCart } = useCart(); // 🔥 THÊM
-
   const filters = useMemo(() => ({
     search: searchParams.get('search') || '',
-    categoryId: searchParams.get('category') || '',
+    category: searchParams.get('category') || '',
     sort: searchParams.get('sort') || 'newest',
     page: Number(searchParams.get('page') || 1),
     limit: 50,
@@ -70,11 +67,6 @@ export default function ProductsPage() {
     updateFilter('search', keyword.trim());
   };
 
-  // 🔥 HANDLE ADD TO CART (QUAN TRỌNG)
-  const handleAddToCart = (product) => {
-    addToCart(product); // truyền nguyên object
-  };
-
   if (loading) {
     return <div className="p-10 text-center">Đang tải...</div>;
   }
@@ -108,7 +100,7 @@ export default function ProductsPage() {
 
           {/* CATEGORY */}
           <select
-            value={filters.categoryId}
+            value={filters.category}
             onChange={(e) => updateFilter('category', e.target.value)}
             className="border rounded px-4 py-2"
           >
@@ -140,7 +132,6 @@ export default function ProductsPage() {
               product={product}
               liked={isWishlisted(product.id)}
               onToggleWishlist={toggleWishlist}
-              onAddToCart={() => handleAddToCart(product)} // 🔥 THÊM
             />
           ))}
         </div>
@@ -149,6 +140,30 @@ export default function ProductsPage() {
         {!products.length && (
           <div className="text-center text-gray-600">
             Không tìm thấy sản phẩm phù hợp.
+          </div>
+        )}
+
+        {pagination?.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              disabled={pagination.page <= 1}
+              onClick={() => updateFilter('page', String(pagination.page - 1))}
+              className="px-4 py-2 border rounded disabled:opacity-50"
+            >
+              Trước
+            </button>
+            <span className="text-sm text-gray-600">
+              Trang {pagination.page} / {pagination.totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => updateFilter('page', String(pagination.page + 1))}
+              className="px-4 py-2 border rounded disabled:opacity-50"
+            >
+              Sau
+            </button>
           </div>
         )}
       </div>

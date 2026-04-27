@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, ResponsiveContainer,
@@ -6,21 +6,19 @@ import {
 } from "recharts";
 import { statsAPI } from "../../services/api";
 
+const defaultSummary = {
+  totalRevenue: 0,
+  totalOrders: 0,
+  paidOrders: 0,
+  deliveredOrders: 0,
+};
+
 export default function AdminReports() {
   const [revenue, setRevenue] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [summary, setSummary] = useState({
-    totalRevenue: 0,
-    totalOrders: 0,
-    paidOrders: 0,
-    deliveredOrders: 0,
-  });
+  const [summary, setSummary] = useState(defaultSummary);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const r = await statsAPI.getRevenue();
       const o = await statsAPI.getOrders();
@@ -28,11 +26,15 @@ export default function AdminReports() {
 
       setRevenue(r.data?.data || []);
       setOrders(o.data?.data || []);
-      setSummary(s.data?.data || summary);
+      setSummary(s.data?.data || defaultSummary);
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   return (
     <div className="p-6 space-y-8">

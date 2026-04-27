@@ -1,8 +1,45 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { cartAPI } from '../services/api';
 import { useAuth } from './AuthContext';
 
 const CartContext = createContext(null);
+
+const normalizeVariant = (value) => (value ? String(value).trim() : '');
+
+const calculateCartState = (items) => ({
+  items,
+  totalQuantity: items.reduce((total, item) => total + Number(item.quantity || 0), 0),
+});
+
+const loadLocalCart = () => {
+  try {
+    const items = JSON.parse(localStorage.getItem("cart") || "[]");
+    return Array.isArray(items) ? calculateCartState(items) : calculateCartState([]);
+  } catch {
+    return calculateCartState([]);
+  }
+};
+
+const getItemIdentity = (itemOrProductId, options = {}) => {
+  if (typeof itemOrProductId === 'object' && itemOrProductId !== null) {
+    return {
+      productId: itemOrProductId.productId,
+      color: normalizeVariant(itemOrProductId.color),
+      size: normalizeVariant(itemOrProductId.size),
+    };
+  }
+
+  return {
+    productId: itemOrProductId,
+    color: normalizeVariant(options.color),
+    size: normalizeVariant(options.size),
+  };
+};
+
+const isSameCartItem = (item, identity) =>
+  String(item.productId) === String(identity.productId) &&
+  normalizeVariant(item.color) === identity.color &&
+  normalizeVariant(item.size) === identity.size;
 
 export const useCart = () => {
   const context = useContext(CartContext);
@@ -11,35 +48,27 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState({ items: [], totalQuantity: 0 });
+  const [cart, setCart] = useState(loadLocalCart);
   const { user } = useAuth();
 
-  // LOAD từ local (QUAN TRỌNG NHẤT)
-  useEffect(() => {
-    const local = JSON.parse(localStorage.getItem("cart") || "[]");
-
-    setCart({
-      items: local,
-      totalQuantity: local.reduce((t, i) => t + i.quantity, 0),
-    });
+  // SAVE LOCAL + STATE (DUY NHẤT)
+  const saveLocal = useCallback((items) => {
+    localStorage.setItem("cart", JSON.stringify(items));
+    setCart(calculateCartState(items));
   }, []);
 
-  // SAVE LOCAL + STATE (DUY NHẤT)
-  const saveLocal = (items) => {
-    localStorage.setItem("cart", JSON.stringify(items));
-
-    setCart({
-      items,
-      totalQuantity: items.reduce((t, i) => t + i.quantity, 0),
-    });
-  };
-
   // ADD TO CART (KHÔNG overwrite server)
-  const addToCart = async (product, quantity = 1) => {
+  const addToCart = useCallback(async (product, quantity = 1) => {
+    if (!product?.id) {
+      throw new Error('Invalid product');
+    }
+
+    const color = normalizeVariant(product.color);
+    const size = normalizeVariant(product.size);
     const items = [...cart.items];
 
     const index = items.findIndex(
-      i => String(i.productId) === String(product.id)
+      i => isSameCartItem(i, { productId: product.id, color, size })
     );
 
     if (index !== -1) {
@@ -50,6 +79,8 @@ export const CartProvider = ({ children }) => {
         name: product.name,
         price: product.price,
         image: product.image,
+        color,
+        size,
         quantity,
       });
     }
@@ -60,40 +91,42 @@ export const CartProvider = ({ children }) => {
     // sync server (KHÔNG reload lại cart)
     if (navigator.onLine && user) {
       try {
-        await cartAPI.addToCart(product.id, quantity);
+        await cartAPI.addToCart(product.id, quantity, { color, size });
       } catch (e) {
         console.error("Sync lỗi:", e);
       }
     }
-  };
+  }, [cart.items, saveLocal, user]);
 
   // UPDATE QUANTITY
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = useCallback((itemOrProductId, quantity, options = {}) => {
     if (quantity < 1) return;
 
+    const identity = getItemIdentity(itemOrProductId, options);
     const items = cart.items.map(i =>
-      String(i.productId) === String(productId)
+      isSameCartItem(i, identity)
         ? { ...i, quantity }
         : i
     );
 
     saveLocal(items);
-  };
+  }, [cart.items, saveLocal]);
 
   // REMOVE
-  const removeItem = (productId) => {
+  const removeItem = useCallback((itemOrProductId, options = {}) => {
+    const identity = getItemIdentity(itemOrProductId, options);
     const items = cart.items.filter(
-      i => String(i.productId) !== String(productId)
+      i => !isSameCartItem(i, identity)
     );
 
     saveLocal(items);
-  };
+  }, [cart.items, saveLocal]);
 
   // CLEAR
-  const clearCart = () => {
+  const clearCart = useCallback(() => {
     localStorage.removeItem("cart");
-    saveLocal([]);
-  };
+    setCart(calculateCartState([]));
+  }, []);
 
   // BACKGROUND SYNC (PWA CHUẨN)
   useEffect(() => {
@@ -108,7 +141,10 @@ export const CartProvider = ({ children }) => {
 
         await Promise.allSettled(
           items.map(item =>
-            cartAPI.addToCart(item.productId, item.quantity)
+            cartAPI.addToCart(item.productId, item.quantity, {
+              color: item.color,
+              size: item.size,
+            })
           )
         );
 
@@ -129,7 +165,7 @@ export const CartProvider = ({ children }) => {
     updateQuantity,
     removeItem,
     clearCart,
-  }), [cart]);
+  }), [cart, addToCart, updateQuantity, removeItem, clearCart]);
 
   return (
     <CartContext.Provider value={value}>

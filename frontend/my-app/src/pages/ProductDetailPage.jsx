@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { productAPI, reviewAPI } from '../services/api';
+import { productAPI } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useWishlist } from '../hooks/useWishlist';
@@ -13,30 +13,17 @@ export default function ProductDetailPage() {
   const { isWishlisted, toggleWishlist } = useWishlist();
 
   const [product, setProduct] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [reviewSummary, setReviewSummary] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const myReview = useMemo(
-    () => reviews.find((item) => item.user?.id === user?.id) || null,
-    [reviews, user]
-  );
-
-  const loadProduct = async () => {
+  const loadProduct = useCallback(async () => {
     setLoading(true);
     try {
-      const [productRes, reviewRes] = await Promise.all([
-        productAPI.getProductById(id),
-        reviewAPI.getProductReviews(id),
-      ]);
-
+      const productRes = await productAPI.getProductById(id);
       const nextProduct = productRes.data;
       setProduct(nextProduct);
-      setReviews(reviewRes.data?.items || []);
-      setReviewSummary(reviewRes.data?.summary || null);
 
       setSelectedColor(nextProduct.colors?.[0] || '');
       setSelectedSize(nextProduct.sizes?.[0] || '');
@@ -45,11 +32,11 @@ export default function ProductDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     loadProduct();
-  }, [id]);
+  }, [loadProduct]);
 
   // 🔥 FIX LOGIC (GIỮ UI)
   const handleAddToCart = async () => {
@@ -69,7 +56,7 @@ export default function ProductDetailPage() {
       );
 
       alert('Đã thêm vào giỏ hàng');
-    } catch (error) {
+    } catch {
       alert('Không thể thêm vào giỏ hàng');
     }
   };
@@ -91,7 +78,7 @@ export default function ProductDetailPage() {
       );
 
       navigate('/checkout');
-    } catch (error) {
+    } catch {
       alert('Không thể mua ngay');
     }
   };
@@ -154,6 +141,50 @@ export default function ProductDetailPage() {
             </p>
 
             <p>Tồn kho: {availableStock}</p>
+
+            {product.colors?.length > 0 && (
+              <div>
+                <p>Màu</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {product.colors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setSelectedColor(color)}
+                      className={`border px-3 py-1 rounded ${
+                        selectedColor === color
+                          ? 'border-red-600 bg-red-50 text-red-600'
+                          : 'border-gray-300'
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {product.sizes?.length > 0 && (
+              <div>
+                <p>Size</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {product.sizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(size)}
+                      className={`border px-3 py-1 rounded ${
+                        selectedSize === size
+                          ? 'border-red-600 bg-red-50 text-red-600'
+                          : 'border-gray-300'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* QUANTITY */}
             <div>

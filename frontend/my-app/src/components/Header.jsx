@@ -8,7 +8,7 @@ function Header() {
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { cart, cartCount } = useCart();
+  const { cartCount } = useCart();
 
   const handleLogout = () => {
     logout();
