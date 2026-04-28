@@ -120,18 +120,37 @@ export default function OrderDetailPage() {
                 Mở trang PayOS để quét QR / thanh toán. Sau khi thanh toán xong, trang này sẽ tự cập nhật trạng thái.
               </p>
 
-              {/* If backend provides qrCode payload, render as QR image via a simple public generator */}
-              {payment?.checkout?.qrCode ? (
-                <div className="flex justify-center">
-                  <img
-                    alt="PayOS QR"
-                    className="w-56 h-56 border rounded"
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-                      payment.checkout.qrCode
-                    )}`}
-                  />
-                </div>
-              ) : null}
+              {(() => {
+                const checkoutUrl = payment?.checkout?.url || '';
+                const qrCode = payment?.checkout?.qrCode || '';
+
+                // Prefer generating QR from checkoutUrl (most reliable for PayOS hosted page).
+                const qrData = checkoutUrl || qrCode;
+                if (!qrData) return null;
+
+                // If PayOS returns an image URL or data URL, render directly.
+                const qrLooksLikeImageUrl =
+                  typeof qrCode === 'string' &&
+                  (qrCode.startsWith('http://') ||
+                    qrCode.startsWith('https://') ||
+                    qrCode.startsWith('data:image/'));
+
+                const imgSrc = qrLooksLikeImageUrl
+                  ? qrCode
+                  : `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
+                      String(qrData)
+                    )}`;
+
+                return (
+                  <div className="flex justify-center">
+                    <img
+                      alt="PayOS QR"
+                      className="w-56 h-56 border rounded"
+                      src={imgSrc}
+                    />
+                  </div>
+                );
+              })()}
 
               <a
                 href={payment.checkout.url}
