@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import OrderTimeline from '../components/OrderTimeline'; 
+import { orderAPI } from '../services/api';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -9,22 +10,11 @@ export default function OrderDetailPage() {
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/orders/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          alert(data.message);
-          return;
-        }
-
-        setOrder(data.data);
+        const res = await orderAPI.getOrderById(id);
+        setOrder(res.data);
       } catch (err) {
         console.error(err);
+        alert(err?.message || 'Lỗi server');
       }
     };
 
@@ -35,26 +25,12 @@ export default function OrderDetailPage() {
     if (!window.confirm('Bạn chắc chắn muốn hủy đơn?')) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/orders/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ status: 'cancelled' })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.message);
-        return;
-      }
-
+      await orderAPI.updateOrderStatus(id, { status: 'cancelled' });
       alert('Đã hủy đơn');
       window.location.reload();
     } catch (err) {
       console.error(err);
+      alert(err?.message || 'Lỗi server');
     }
   };
 

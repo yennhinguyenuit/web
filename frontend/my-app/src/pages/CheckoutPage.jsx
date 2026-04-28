@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { checkoutAPI, orderAPI } from '../services/api';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -44,23 +45,12 @@ export default function CheckoutPage() {
 
     setLoadingCoupon(true);
     try {
-      const res = await fetch('http://localhost:5000/api/coupons/validate-coupon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: coupon })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        const value = data.data?.discount || 50000;
-        setDiscount(value);
-        setCouponMsg(`✔ Giảm ${value.toLocaleString()}đ`);
-      } else {
-        setDiscount(0);
-        setCouponMsg(data.message);
-      }
+      const res = await checkoutAPI.validateCoupon(coupon, subtotal);
+      const value = res?.data?.discount ?? 0;
+      setDiscount(value);
+      setCouponMsg(`✔ Giảm ${Number(value).toLocaleString()}đ`);
     } catch {
+      setDiscount(0);
       setCouponMsg('Lỗi server');
     } finally {
       setLoadingCoupon(false);
@@ -81,46 +71,47 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+      const result = await orderAPI.createOrder({
+        shippingAddress: {
+          name: `${form.firstName} ${form.lastName}`,
+          phone: form.phone,
+          address: form.address,
+          ward: form.ward,
+          district: form.district,
+          city: form.city
         },
-        body: JSON.stringify({
-          shippingAddress: {
-            name: `${form.firstName} ${form.lastName}`,
-            phone: form.phone,
-            address: form.address,
-            ward: form.ward,
-            district: form.district,
-            city: form.city
-          },
-          shippingMethodCode: form.shipping,
-          paymentMethodCode: form.payment,
-          couponCode: coupon || null,
-          items: items.map(i => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            color: i.color || null,
-            size: i.size || null
-          }))
-        })
+        shippingMethodCode: form.shipping,
+        paymentMethodCode: form.payment,
+        couponCode: coupon || null,
+        items: items.map(i => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          color: i.color || null,
+          size: i.size || null
+        }))
       });
 
-      const result = await res.json();
+      const orderId = result?.data?.id;
+      const orderCode = result?.data?.code;
 
-      if (!res.ok) {
-        alert(result.message || 'Lỗi tạo đơn');
+      clearCart();
+      // If user chose online payment, send them to order details (where payment UX can live).
+      // Otherwise show the generic success screen.
+      if (form.payment === 'payos' && orderId) {
+        navigate(`/orders/${orderId}`);
         return;
       }
 
-      clearCart();
-      navigate('/order-success');
+      navigate('/order-success', {
+        state: {
+          orderId,
+          orderCode
+        }
+      });
 
     } catch (err) {
       console.error(err);
-      alert('Lỗi server');
+      alert(err?.message || 'Lỗi server');
     } finally {
       setLoading(false);
     }
