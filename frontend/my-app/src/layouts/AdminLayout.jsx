@@ -54,8 +54,6 @@ function AdminLayout() {
       ? 'Quản lý đơn hàng'
       : location.pathname.includes('/admin/customers')
       ? 'Khách hàng'
-      : location.pathname.includes('/admin/reports')
-      ? 'Báo cáo'
       : location.pathname.includes('/admin/coupons')
       ? 'Mã giảm giá'
       : location.pathname.includes('/admin/flash-sale')
@@ -92,11 +90,6 @@ function AdminLayout() {
             <NavLink to="/admin/customers" className={navClass}>
               <span>👤</span>
               <span>Khách hàng</span>
-            </NavLink>
-
-            <NavLink to="/admin/reports" className={navClass}>
-              <span>📈</span>
-              <span>Báo cáo</span>
             </NavLink>
 
             {/* NEW */}

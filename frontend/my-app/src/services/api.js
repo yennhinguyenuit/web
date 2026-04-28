@@ -236,6 +236,7 @@ export const statsAPI = {
   getRevenue: () => api.get("/stats/revenue"),
   getOrders: () => api.get("/stats/orders"),
   getSummary: () => api.get("/stats/summary"),
+  getTopProducts: () => api.get("/stats/top-products"),
 };
 
 // 🔥 USERS (THÊM MỚI)

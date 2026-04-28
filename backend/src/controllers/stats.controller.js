@@ -1,30 +1,53 @@
 const prisma = require("../config/prisma");
 
-// 🔥 SUMMARY
-exports.getSummary = async (req, res) => {
+// 🔥 SUMMARY + LATEST ORDERS + USERS + PENDING
+const getSummary = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
       select: {
+        id: true,
+        code: true,
         total: true,
         status: true,
+        createdAt: true,
+        user: {
+          select: { name: true },
+        },
       },
+      orderBy: { createdAt: "desc" },
     });
 
     let totalRevenue = 0;
     let totalOrders = 0;
     let paidOrders = 0;
-    let deliveredOrders = 0;
+    let completedOrders = 0;
+    let pendingOrders = 0;
 
     orders.forEach((o) => {
       totalOrders++;
 
-      if (o.status === "paid") paidOrders++;
-      if (o.status === "delivered") deliveredOrders++;
+      const status = o.status?.toLowerCase().trim();
 
-      if (o.status === "delivered") {
+      if (status === "confirmed") paidOrders++;
+      if (status === "completed") completedOrders++;
+      if (status === "pending") pendingOrders++;
+
+      if (status === "completed") {
         totalRevenue += Number(o.total);
       }
     });
+
+    // 👤 USERS
+    const totalUsers = await prisma.user.count();
+
+    // 🧾 LATEST ORDERS
+    const latestOrders = orders.slice(0, 5).map((o) => ({
+      id: o.id,
+      code: o.code,
+      total: o.total,
+      status: o.status,
+      customerName: o.user?.name || "Khách",
+    }));
 
     res.json({
       success: true,
@@ -32,7 +55,10 @@ exports.getSummary = async (req, res) => {
         totalRevenue,
         totalOrders,
         paidOrders,
-        deliveredOrders,
+        completedOrders,
+        pendingOrders, // ✅ thêm
+        totalUsers,    // ✅ thêm
+        latestOrders,
       },
     });
   } catch (err) {
@@ -41,18 +67,20 @@ exports.getSummary = async (req, res) => {
   }
 };
 
-// 📊 DOANH THU
-exports.getRevenue = async (req, res) => {
+// 📈 DOANH THU THEO NGÀY
+const getRevenue = async (req, res) => {
   try {
-    const orders = await prisma.order.findMany({
-      where: {
-        status: "delivered", // chỉ tính đơn hoàn thành
-      },
+    const allOrders = await prisma.order.findMany({
       select: {
         total: true,
         createdAt: true,
+        status: true,
       },
     });
+
+    const orders = allOrders.filter(
+      (o) => o.status?.toLowerCase().trim() === "completed"
+    );
 
     const map = {};
 
@@ -69,18 +97,23 @@ exports.getRevenue = async (req, res) => {
       total: map[date],
     }));
 
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      data,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
   }
 };
 
-// 📦 SỐ ĐƠN
-exports.getOrders = async (req, res) => {
+// 📦 SỐ ĐƠN THEO NGÀY
+const getOrders = async (req, res) => {
   try {
     const orders = await prisma.order.findMany({
-      select: { createdAt: true },
+      select: {
+        createdAt: true,
+      },
     });
 
     const map = {};
@@ -98,9 +131,62 @@ exports.getOrders = async (req, res) => {
       total: map[date],
     }));
 
-    res.json({ success: true, data });
+    res.json({
+      success: true,
+      data,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false });
   }
+};
+
+// 🔥 TOP PRODUCTS
+const getTopProducts = async (req, res) => {
+  try {
+    const items = await prisma.orderItem.groupBy({
+      by: ["productId"],
+      _sum: {
+        quantity: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: "desc",
+        },
+      },
+      take: 5,
+    });
+
+    const products = await prisma.product.findMany({
+      where: {
+        id: {
+          in: items.map((i) => i.productId),
+        },
+      },
+    });
+
+    const result = items.map((i) => {
+      const p = products.find((x) => x.id === i.productId);
+      return {
+        id: p?.id,
+        name: p?.name || "Không tên",
+        sold: i._sum.quantity,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false });
+  }
+};
+
+module.exports = {
+  getSummary,
+  getRevenue,
+  getOrders,
+  getTopProducts, // ✅ thêm
 };

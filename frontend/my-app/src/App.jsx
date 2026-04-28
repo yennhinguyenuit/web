@@ -27,7 +27,6 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCustomers from './pages/admin/AdminCustomers';
-import AdminReports from './pages/admin/AdminReports';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { cartAPI } from './services/api';
@@ -160,7 +159,6 @@ useEffect(() => {
         <Route path="products" element={<AdminProducts />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="customers" element={<AdminCustomers />} />
-        <Route path="reports" element={<AdminReports />} />
         <Route path="coupons" element={<CouponsPage />} />
         <Route path="flash-sale" element={<FlashSalePage />} />
       </Route>

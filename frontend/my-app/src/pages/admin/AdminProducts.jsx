@@ -56,7 +56,7 @@ export default function AdminProducts() {
     setLoading(true);
     try {
       const res = await adminAPI.getProducts();
-      setProducts(res.data || []);
+     setProducts(res.data || res || []);
       setError('');
     } catch (error) {
       console.error(error);

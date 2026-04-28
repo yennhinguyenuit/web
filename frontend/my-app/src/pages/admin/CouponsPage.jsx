@@ -3,9 +3,15 @@ import { couponAPI } from "../../services/api";
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [form, setForm] = useState({
     code: "",
     discount: "",
+    minOrder: "",
+    startDate: "",
+    endDate: "",
+    status: "active",
   });
 
   // 🔥 LOAD COUPONS
@@ -22,78 +28,204 @@ export default function CouponsPage() {
     fetchCoupons();
   }, [fetchCoupons]);
 
-  // 🔥 ADD COUPON
-  const handleAdd = async () => {
+  // GET LIST
+  const fetchCoupons = async () => {
     try {
-      if (!form.code) return;
+      setLoading(true);
+      const res = await couponAPI.getCoupons();
 
-      await couponAPI.createCoupon({
-        code: form.code,
+      const data = res.data;
+
+      if (Array.isArray(data)) setCoupons(data);
+      else if (Array.isArray(data.data)) setCoupons(data.data);
+      else if (Array.isArray(data.coupons)) setCoupons(data.coupons);
+      else setCoupons([]);
+    } catch (err) {
+      console.error("❌ GET ERROR:", err);
+      setCoupons([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // HANDLE INPUT
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // CREATE
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (form.startDate && form.endDate) {
+      if (form.endDate < form.startDate) {
+        alert("Ngày kết thúc phải lớn hơn ngày bắt đầu");
+        return;
+      }
+    }
+
+    try {
+      const payload = {
+        code: form.code.trim(),
         discount: Number(form.discount),
+
+        // gửi cả 2 để chắc chắn backend nhận
+        minOrder: Number(form.minOrder || 0),
+        min_order: Number(form.minOrder || 0),
+
+        startDate: form.startDate,
+        start_date: form.startDate,
+
+        endDate: form.endDate,
+        end_date: form.endDate,
+
+        status: form.status,
+      };
+
+      console.log("🔥 PAYLOAD:", payload);
+
+      const res = await couponAPI.createCoupon(payload);
+      console.log("✅ CREATE:", res.data);
+
+      await fetchCoupons();
+
+      // reset form
+      setForm({
+        code: "",
+        discount: "",
+        minOrder: "",
+        startDate: "",
+        endDate: "",
+        status: "active",
       });
 
-      setForm({ code: "", discount: "" });
-      fetchCoupons(); // reload
     } catch (err) {
-      console.error("Lỗi tạo coupon", err);
+      console.error("❌ FULL ERROR:", err);
+
+      if (err.response) {
+        console.error("❌ BACKEND:", err.response.data);
+        alert(JSON.stringify(err.response.data)); // 🔥 hiện lỗi thật
+      } else {
+        alert("Không kết nối được server");
+      }
+    }
+  };
+
+  // DELETE
+  const handleDelete = async (id) => {
+    if (!window.confirm("Xóa coupon?")) return;
+
+    try {
+      await couponAPI.deleteCoupon(id);
+      await fetchCoupons();
+    } catch (err) {
+      console.error("❌ DELETE ERROR:", err);
     }
   };
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">🎟️ Quản lý mã giảm giá</h1>
+
+      <h1 className="text-3xl font-bold text-red-600">
+        🎟 Quản lý Coupon
+      </h1>
 
       {/* FORM */}
-      <div className="bg-white p-5 rounded-xl shadow space-y-3">
-        <h2 className="font-semibold">Tạo mã mới</h2>
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 rounded-xl shadow grid grid-cols-2 gap-4"
+      >
+        <input
+          name="code"
+          value={form.code}
+          onChange={handleChange}
+          placeholder="Code"
+          className="border p-2 rounded"
+          required
+        />
 
-        <div className="flex gap-3">
-          <input
-            placeholder="Code"
-            className="border p-2 rounded w-full"
-            value={form.code}
-            onChange={(e) =>
-              setForm({ ...form, code: e.target.value })
-            }
-          />
+        <input
+          name="discount"
+          type="number"
+          value={form.discount}
+          onChange={handleChange}
+          placeholder="Discount (%)"
+          className="border p-2 rounded"
+          required
+        />
 
-          <input
-            placeholder="% giảm"
-            className="border p-2 rounded w-full"
-            value={form.discount}
-            onChange={(e) =>
-              setForm({ ...form, discount: e.target.value })
-            }
-          />
+        <input
+          name="minOrder"
+          type="number"
+          value={form.minOrder}
+          onChange={handleChange}
+          placeholder="Min Order"
+          className="border p-2 rounded"
+        />
 
-          <button
-            onClick={handleAdd}
-            className="bg-red-500 text-white px-4 rounded"
-          >
-            Thêm
-          </button>
-        </div>
-      </div>
+        <select
+          name="status"
+          value={form.status}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        >
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+
+        <input
+          type="date"
+          name="startDate"
+          value={form.startDate}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          required
+        />
+
+        <input
+          type="date"
+          name="endDate"
+          value={form.endDate}
+          onChange={handleChange}
+          className="border p-2 rounded"
+          required
+        />
+
+        <button
+          type="submit"
+          className="col-span-2 bg-red-500 text-white py-2 rounded"
+        >
+          ➕ Tạo Coupon
+        </button>
+      </form>
 
       {/* LIST */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-3">Code</th>
-              <th>Giảm</th>
-            </tr>
-          </thead>
+      <div className="bg-white p-6 rounded-xl shadow">
+        <h2 className="font-bold mb-4">📋 Danh sách Coupon</h2>
 
-          <tbody>
-            {coupons.map((c) => (
-              <tr key={c.id} className="border-t">
-                <td className="p-3 font-semibold">{c.code}</td>
-                <td>{c.discount}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {loading ? (
+          <p>Đang tải...</p>
+        ) : coupons.length === 0 ? (
+          <p>Không có dữ liệu</p>
+        ) : (
+          coupons.map((c) => (
+            <div key={c.id} className="flex justify-between border-b py-2">
+              <div>
+                <b>{c.code}</b>
+                <p>Giảm {c.discount}%</p>
+              </div>
+
+              <div>
+                {new Date(c.startDate).toLocaleDateString("vi-VN")} →
+                {new Date(c.endDate).toLocaleDateString("vi-VN")}
+              </div>
+
+              <button onClick={() => handleDelete(c.id)}>
+                Xóa
+              </button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

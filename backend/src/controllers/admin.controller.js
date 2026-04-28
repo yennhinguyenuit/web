@@ -1,6 +1,6 @@
 const prisma = require('../config/prisma');
 
-const ORDER_STATUSES = ['pending', 'confirmed', 'shipping', 'delivered', 'cancelled'];
+const ORDER_STATUSES = ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'];
 const PAYMENT_STATUSES = ['unpaid', 'pending', 'paid', 'failed', 'expired', 'refunded'];
 const normalizeStringArray = (value) => {
   if (Array.isArray(value)) {

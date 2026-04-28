@@ -12,7 +12,11 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       const res = await userAPI.getUsers();
-      setUsers(res.data.data || []);
+
+      // 🔥 FIX QUAN TRỌNG: đọc đúng data từ API
+      console.log("Users API:", res.data);
+
+      setUsers(res.data?.data || res.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -67,7 +71,7 @@ export default function AdminUsers() {
           <tbody>
             {users.map((u) => (
               <tr
-                key={u.id}
+                key={u.id || u._id} // 🔥 fix luôn Mongo case
                 className="border-t hover:bg-red-50 transition"
               >
                 {/* NAME */}
@@ -89,14 +93,14 @@ export default function AdminUsers() {
                         : "bg-pink-100 text-pink-600"
                     }`}
                   >
-                    {u.role?.name}
+                    {u.role?.name || "user"}
                   </span>
                 </td>
 
                 {/* DELETE */}
                 <td>
                   <button
-                    onClick={() => handleDelete(u.id)}
+                    onClick={() => handleDelete(u.id || u._id)}
                     className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 hover:scale-105 transition"
                   >
                     🗑️

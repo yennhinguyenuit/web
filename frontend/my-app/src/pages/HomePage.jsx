@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { productAPI } from '../services/api';
 import { useWishlist } from '../hooks/useWishlist';
 import ProductCard from '../components/ProductCard';
+import FlashSale from "../components/FlashSale";
 
 function HomePage() {
   const [products, setProducts] = useState([]);
@@ -76,6 +77,11 @@ function HomePage() {
         </div>
       </div>
 
+      {/* FLASH SALE */}
+      <div className="px-10 py-10">
+        <FlashSale />
+      </div>
+      
       {/* PRODUCTS */}
       <div className="py-16 px-10">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
