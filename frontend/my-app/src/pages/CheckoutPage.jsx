@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { checkoutAPI, orderAPI } from '../services/api';
@@ -25,11 +25,56 @@ export default function CheckoutPage() {
 
   const [loading, setLoading] = useState(false);
 
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+
+  const SUPPORTED_PAYMENT_CODES = new Set(['cod', 'payos', 'bank_transfer']);
+
   // COUPON
   const [coupon, setCoupon] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState('');
   const [loadingCoupon, setLoadingCoupon] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadPaymentMethods = async () => {
+      setLoadingPaymentMethods(true);
+      try {
+        const res = await checkoutAPI.getPaymentMethods();
+        const methods = Array.isArray(res?.data) ? res.data : [];
+        const enabledAndSupported = methods.filter((m) => (
+          m?.isEnabled &&
+          SUPPORTED_PAYMENT_CODES.has(m.code) &&
+          // if provider needs env config (PayOS / bank transfer), only show when configured
+          (m.isOnline ? Boolean(m.isConfigured) : true)
+        ));
+
+        if (ignore) return;
+        setPaymentMethods(enabledAndSupported);
+
+        if (
+          !enabledAndSupported.some((m) => m.code === form.payment) &&
+          enabledAndSupported.length > 0
+        ) {
+          setForm((prev) => ({ ...prev, payment: enabledAndSupported[0].code }));
+        }
+      } catch (err) {
+        console.error(err);
+        if (!ignore) setPaymentMethods([]);
+      } finally {
+        if (!ignore) setLoadingPaymentMethods(false);
+      }
+    };
+
+    loadPaymentMethods();
+
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -162,16 +207,22 @@ export default function CheckoutPage() {
 
           {/* PAYMENT */}
           <Section title="Phương thức thanh toán" step={4}>
-            <Option
-              label="Thanh toán khi nhận hàng"
-              checked={form.payment === 'cod'}
-              onChange={() => setForm({ ...form, payment: 'cod' })}
-            />
-            <Option
-              label="Thanh toán online (QR / Banking)"
-              checked={form.payment === 'payos'}
-              onChange={() => setForm({ ...form, payment: 'payos' })}
-            />
+            {loadingPaymentMethods ? (
+              <p className="text-sm text-gray-500">Đang tải phương thức thanh toán...</p>
+            ) : paymentMethods.length === 0 ? (
+              <p className="text-sm text-red-600">
+                Không có phương thức thanh toán khả dụng. Vui lòng thử lại sau.
+              </p>
+            ) : (
+              paymentMethods.map((method) => (
+                <Option
+                  key={method.id || method.code}
+                  label={method.name}
+                  checked={form.payment === method.code}
+                  onChange={() => setForm({ ...form, payment: method.code })}
+                />
+              ))
+            )}
           </Section>
 
         </div>
