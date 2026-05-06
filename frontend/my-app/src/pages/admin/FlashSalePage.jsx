@@ -269,8 +269,3 @@ export default function FlashSalePage() {
     </div>
   );
 }
-      </div>
-
-    </div>
-  );
-}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../services/api';
 
 export default function MyOrders() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function MyOrders() {
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/orders', {
+        const res = await fetch(`${API_URL}/orders`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }

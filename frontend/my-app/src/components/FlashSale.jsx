@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { API_URL } from "../services/api";
 
 export default function FlashSale() {
   const [sale, setSale] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/flash-sale/active")
+    fetch(`${API_URL}/flash-sale/active`)
       .then(res => res.json())
       .then(data => setSale(data.data));
   }, []);
