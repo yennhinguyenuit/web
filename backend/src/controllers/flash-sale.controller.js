@@ -10,18 +10,58 @@ const HOLIDAY_CAMPAIGNS = [
 const mapFlashSale = (flashSale) => {
   if (!flashSale) return null;
 
+  const now = new Date();
+  const startAt = new Date(flashSale.startAt);
+  const endAt = new Date(flashSale.endAt);
+  const status = !flashSale.isActive
+    ? "inactive"
+    : startAt > now
+      ? "scheduled"
+      : endAt < now
+        ? "ended"
+        : "running";
+
   return {
     id: flashSale.id,
     name: flashSale.name,
     discount_percent: Number(flashSale.discountPercent),
     start_date: flashSale.startAt,
     end_date: flashSale.endAt,
+    isActive: flashSale.isActive,
+    status,
     products: (flashSale.items || []).map((item) => item.product),
+    productIds: (flashSale.items || []).map((item) => item.productId),
+    productCount: (flashSale.items || []).length,
     flashSaleItems: (flashSale.items || []).map((item) => ({
       id: item.id,
       product: item.product,
     })),
   };
+};
+
+const getFlashSales = async (req, res) => {
+  try {
+    const flashSales = await prisma.flashSale.findMany({
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+      orderBy: {
+        startAt: "desc",
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: flashSales.map(mapFlashSale),
+    });
+  } catch (error) {
+    console.error("getFlashSales error:", error);
+    return res.status(500).json({ success: false, message: "Khong the tai danh sach flash sale" });
+  }
 };
 
 const getActiveFlashSale = async (req, res) => {
@@ -72,24 +112,58 @@ const createFlashSale = async (req, res) => {
       return res.status(400).json({ success: false, message: "Thời gian flash sale không hợp lệ" });
     }
 
-    const flashSale = await prisma.flashSale.create({
-      data: {
-        name: String(name).trim(),
-        discountPercent,
-        startAt,
-        endAt,
+    const uniqueProductIds = [...new Set(
+      (Array.isArray(productIds) ? productIds : [])
+        .map((productId) => String(productId || "").trim())
+        .filter(Boolean)
+    )];
+
+    if (uniqueProductIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Vui long chon it nhat 1 san pham" });
+    }
+
+    const validProducts = await prisma.product.findMany({
+      where: {
+        id: { in: uniqueProductIds },
         isActive: true,
-        items: {
-          create: (Array.isArray(productIds) ? productIds : []).map((productId) => ({
-            productId,
-          })),
-        },
+        isDeleted: false,
       },
-      include: {
-        items: {
-          include: { product: true },
+      select: { id: true },
+    });
+
+    if (validProducts.length !== uniqueProductIds.length) {
+      return res.status(400).json({ success: false, message: "Danh sach san pham flash sale khong hop le" });
+    }
+
+    const flashSale = await prisma.$transaction(async (tx) => {
+      await tx.flashSale.updateMany({
+        where: {
+          isActive: true,
+          startAt: { lte: endAt },
+          endAt: { gte: startAt },
         },
-      },
+        data: { isActive: false },
+      });
+
+      return tx.flashSale.create({
+        data: {
+          name: String(name).trim(),
+          discountPercent,
+          startAt,
+          endAt,
+          isActive: true,
+          items: {
+            create: uniqueProductIds.map((productId) => ({
+              productId,
+            })),
+          },
+        },
+        include: {
+          items: {
+            include: { product: true },
+          },
+        },
+      });
     });
 
     return res.status(201).json({ success: true, data: mapFlashSale(flashSale) });
@@ -166,6 +240,7 @@ const startHolidayFlashSaleCron = () => {
 };
 
 module.exports = {
+  getFlashSales,
   getActiveFlashSale,
   createFlashSale,
   deleteFlashSale,

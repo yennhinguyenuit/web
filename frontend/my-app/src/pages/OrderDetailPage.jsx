@@ -23,6 +23,7 @@ export default function OrderDetailPage() {
       try {
         const res = await orderAPI.getOrderById(id);
         setOrder(res.data);
+        setPayment(res?.data?.payment || null);
       } catch (err) {
         console.error(err);
         alert(err?.message || 'Lỗi server');
@@ -181,7 +182,7 @@ export default function OrderDetailPage() {
                     const checkoutUrl = payment?.checkout?.url || '';
                     const qrCode = payment?.checkout?.qrCode || '';
 
-                    const qrData = checkoutUrl || qrCode;
+                    const qrData = qrCode || checkoutUrl;
                     if (!qrData) return null;
 
                     const qrLooksLikeImageUrl =

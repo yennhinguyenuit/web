@@ -19,6 +19,8 @@ const generateOrderCode = () => {
   return `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 };
 
+const COD_PAYMENT_CODE = "cod";
+
 const formatOrderListItem = (order) => {
   return {
     id: order.id,
@@ -101,6 +103,17 @@ const formatOrderDetail = (order) => {
           estimatedDays: order.shippingMethod.estimatedDays,
         }
       : null,
+    address: order.address
+      ? {
+          id: order.address.id,
+          name: order.address.name,
+          phone: order.address.phone,
+          address: order.address.address,
+          city: order.address.city,
+          district: order.address.district,
+          ward: order.address.ward,
+        }
+      : null,
     shippingAddress: order.address
       ? {
           id: order.address.id,
@@ -118,9 +131,21 @@ const formatOrderDetail = (order) => {
       productName: item.productName,
       productImage: item.productImage,
       unitPrice: Number(item.unitPrice),
+      price: Number(item.unitPrice),
       quantity: item.quantity,
       color: item.color || null,
       size: item.size || null,
+      product: item.product
+        ? {
+            id: item.product.id,
+            name: item.product.name || item.productName,
+            image: item.product.image || item.productImage,
+          }
+        : {
+            id: item.productId,
+            name: item.productName,
+            image: item.productImage,
+          },
       subTotal: Number(item.unitPrice) * item.quantity,
     })),
     payment: buildOrderPaymentInfo(order),
@@ -518,13 +543,33 @@ const getOrderDetail = async (req, res) => {
 
     const order = await prisma.order.findFirst({
       where: { id, userId: req.user.id },
+      include: {
+        address: true,
+        paymentMethod: true,
+        shippingMethod: true,
+        coupon: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        transactions: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
     });
 
     if (!order) {
       return sendError(res, "Không tìm thấy đơn", 404);
     }
 
-    return sendSuccess(res, "OK", order);
+    return sendSuccess(res, "OK", formatOrderDetail(order));
   } catch (error) {
     console.error(error);
     return sendError(res, "Lỗi server", 500);
@@ -579,6 +624,12 @@ const updateOrderStatus = async (req, res) => {
       select: {
         id: true,
         status: true,
+        paymentStatus: true,
+        paymentMethod: {
+          select: {
+            code: true,
+          },
+        },
       },
     });
 
@@ -598,9 +649,18 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
+    const updateData = { status: normalizedStatus };
+    if (
+      normalizedStatus === "completed" &&
+      existingOrder.paymentMethod?.code === COD_PAYMENT_CODE &&
+      existingOrder.paymentStatus !== "paid"
+    ) {
+      updateData.paymentStatus = "paid";
+    }
+
     const updated = await prisma.order.update({
       where: { id },
-      data: { status: normalizedStatus },
+      data: updateData,
     });
 
     res.json({

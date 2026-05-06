@@ -189,9 +189,9 @@ const syncPayOSTransactionIfNeeded = async ({ order }) => {
 
   const providerPayload = latestTransaction.providerPayload || {};
   const identifier =
-    providerPayload.paymentLinkId ||
     providerPayload.merchantOrderCode ||
-    latestTransaction.transferContent;
+    latestTransaction.transferContent ||
+    providerPayload.paymentLinkId;
 
   if (!identifier) {
     return order;

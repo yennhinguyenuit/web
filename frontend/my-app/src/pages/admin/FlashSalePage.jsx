@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { flashSaleAPI, productAPI } from "../../services/api";
 
+const FLASH_SALE_STATUS_LABELS = {
+  running: "Dang chay",
+  scheduled: "Sap dien ra",
+  ended: "Da ket thuc",
+  inactive: "Da tat",
+};
+
 export default function FlashSalePage() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,17 +24,17 @@ export default function FlashSalePage() {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
 
-  // LOAD ACTIVE FLASH SALE
+  // LOAD FLASH SALES
   const fetchSales = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await flashSaleAPI.getActiveFlashSale();
-      const data = res?.data;
-      if (data) {
-        setSales([data]);
-      } else {
-        setSales([]);
-      }
+      const res = await flashSaleAPI.getFlashSales();
+      const data = Array.isArray(res?.data)
+        ? res.data
+        : res?.data
+          ? [res.data]
+          : [];
+      setSales(data);
     } catch (err) {
       console.error("❌ FETCH SALES ERROR:", err);
       alert("Lỗi tải flash sale");
@@ -239,6 +246,10 @@ export default function FlashSalePage() {
                 <h2 className="font-bold text-lg text-red-600">{s.name}</h2>
 
                 <p className="text-sm text-gray-600 mt-2">
+                  <strong>Trang thai:</strong> {FLASH_SALE_STATUS_LABELS[s.status] || s.status || "Khong ro"}
+                </p>
+
+                <p className="text-sm text-gray-600">
                   <strong>Giảm:</strong> {s.discount_percent}%
                 </p>
 

@@ -234,6 +234,7 @@ export const couponAPI = {
 
 // 🔥 FLASH SALE
 export const flashSaleAPI = {
+  getFlashSales: () => api.get("/flash-sale"),
   getActiveFlashSale: () => api.get("/flash-sale/active"),
   createFlashSale: (data) => api.post("/flash-sale", data),
   deleteFlashSale: (id) => api.delete(`/flash-sale/${id}`),

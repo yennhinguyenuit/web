@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 
 const ORDER_STATUSES = ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'];
 const PAYMENT_STATUSES = ['unpaid', 'pending', 'paid', 'failed', 'expired', 'refunded'];
+const COD_PAYMENT_CODE = 'cod';
 const ALLOWED_STATUS_TRANSITIONS = {
   pending: new Set(['confirmed', 'cancelled']),
   confirmed: new Set(['shipping', 'cancelled']),
@@ -78,6 +79,8 @@ const mapAdminOrder = (order) => ({
       }
     : null,
   paymentMethod: order.paymentMethod?.name || order.paymentMethodName || '',
+  paymentMethodCode: order.paymentMethod?.code || '',
+  paymentMethodIsOnline: Boolean(order.paymentMethod?.isOnline),
   shippingMethod: order.shippingMethod?.name || order.shippingMethodName || '',
   items: (order.items || []).map((item) => ({
     id: item.id,
@@ -112,7 +115,9 @@ const getAdminOrderInclude = () => ({
   paymentMethod: {
     select: {
       id: true,
+      code: true,
       name: true,
+      isOnline: true,
     },
   },
   shippingMethod: {
@@ -693,7 +698,16 @@ exports.updateOrderStatus = async (req, res) => {
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        paymentStatus: true,
+        paymentMethod: {
+          select: {
+            code: true,
+          },
+        },
+      },
     });
 
     if (!existingOrder) {
@@ -724,6 +738,15 @@ exports.updateOrderStatus = async (req, res) => {
       }
 
       data.status = nextStatus;
+
+      if (
+        nextStatus === 'completed' &&
+        existingOrder.paymentMethod?.code === COD_PAYMENT_CODE &&
+        existingOrder.paymentStatus !== 'paid' &&
+        paymentStatus === undefined
+      ) {
+        data.paymentStatus = 'paid';
+      }
     }
 
     if (paymentStatus !== undefined) {
