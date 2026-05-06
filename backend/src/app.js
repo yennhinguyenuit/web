@@ -18,6 +18,8 @@ const reviewRoutes = require("./routes/review.routes");
 const couponRoutes = require("./routes/coupon.routes");
 const statsRoutes = require("./routes/stats.routes");
 const userRoutes = require("./routes/user.routes");
+const flashSaleRoutes = require("./routes/flash-sale.routes");
+const { validateCoupon } = require("./controllers/coupon.controller");
 
 const { isAppError } = require("./utils/app-error");
 
@@ -78,6 +80,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/coupons", couponRoutes);
+app.post("/api/validate-coupon", validateCoupon);
+app.use("/api/flash-sale", flashSaleRoutes);
 app.use("/api/stats", statsRoutes); // 👈 CHỈ 1 LẦN
 app.use("/api/users", userRoutes);
 

@@ -14,22 +14,8 @@ export default function CouponsPage() {
     status: "active",
   });
 
-  // 🔥 LOAD COUPONS
+  // LOAD LIST
   const fetchCoupons = useCallback(async () => {
-    try {
-      const res = await couponAPI.getCoupons();
-      setCoupons(res.data || []);
-    } catch (err) {
-      console.error("Lỗi load coupon", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCoupons();
-  }, [fetchCoupons]);
-
-  // GET LIST
-  const fetchCoupons = async () => {
     try {
       setLoading(true);
       const res = await couponAPI.getCoupons();
@@ -46,7 +32,11 @@ export default function CouponsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchCoupons();
+  }, [fetchCoupons]);
 
   // HANDLE INPUT
   const handleChange = (e) => {

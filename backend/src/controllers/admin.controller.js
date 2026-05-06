@@ -2,6 +2,11 @@ const prisma = require('../config/prisma');
 
 const ORDER_STATUSES = ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'];
 const PAYMENT_STATUSES = ['unpaid', 'pending', 'paid', 'failed', 'expired', 'refunded'];
+const ALLOWED_STATUS_TRANSITIONS = {
+  pending: new Set(['confirmed', 'cancelled']),
+  confirmed: new Set(['shipping', 'cancelled']),
+  shipping: new Set(['completed']),
+};
 const normalizeStringArray = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || '').trim()).filter(Boolean);
@@ -688,7 +693,7 @@ exports.updateOrderStatus = async (req, res) => {
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!existingOrder) {
@@ -701,13 +706,24 @@ exports.updateOrderStatus = async (req, res) => {
     const data = {};
 
     if (status !== undefined) {
-      if (!ORDER_STATUSES.includes(status)) {
+      const nextStatus = String(status || '').toLowerCase().trim();
+      if (!ORDER_STATUSES.includes(nextStatus)) {
         return res.status(400).json({
           success: false,
           message: 'Trạng thái đơn hàng không hợp lệ',
         });
       }
-      data.status = status;
+
+      const currentStatus = String(existingOrder.status || '').toLowerCase().trim();
+      const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] || new Set();
+      if (!allowedNextStatuses.has(nextStatus)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status transition',
+        });
+      }
+
+      data.status = nextStatus;
     }
 
     if (paymentStatus !== undefined) {

@@ -101,7 +101,7 @@ const validateCouponForCheckout = async ({ prisma, couponCode, userId, subtotal 
     );
   }
 
-  if (coupon.perUserLimit !== null && coupon.perUserLimit !== undefined) {
+  if (userId && coupon.perUserLimit !== null && coupon.perUserLimit !== undefined) {
     const usedCountByUser = await prisma.couponUsage.count({
       where: {
         couponId: coupon.id,

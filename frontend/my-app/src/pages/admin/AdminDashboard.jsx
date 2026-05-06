@@ -7,8 +7,6 @@ import {
   Tooltip,
   CartesianGrid,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
 import { statsAPI } from "../../services/api";
 
@@ -18,7 +16,7 @@ const formatCurrency = (value) =>
 export default function AdminDashboard() {
   const [stats, setStats] = useState({});
   const [revenue, setRevenue] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [ordersSummary, setOrdersSummary] = useState({});
   const [topProducts, setTopProducts] = useState([]);
 
   useEffect(() => {
@@ -42,12 +40,12 @@ setTopProducts(t?.data || t || []);
 
       setRevenue(
         ((r?.data || r) || []).map((item) => ({
-          ...item,
-          date: new Date(item.date).toLocaleDateString("vi-VN"),
+          month: `Tháng ${item.month}`,
+          total: Number(item.revenue || 0),
         }))
       );
 
-      setOrders((o?.data || o) || []);
+      setOrdersSummary((o?.data || o) || {});
     } catch (err) {
       console.error("❌ LOAD DATA ERROR:", err);
     }
@@ -103,7 +101,7 @@ setTopProducts(t?.data || t || []);
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={revenue}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="month" />
               <YAxis />
               <Tooltip
                 formatter={(value) =>
@@ -121,25 +119,15 @@ setTopProducts(t?.data || t || []);
         )}
       </div>
 
-      {/* CHART ĐƠN HÀNG */}
+      {/* TỔNG QUAN ĐƠN HÀNG */}
       <div className="bg-white p-6 rounded-xl shadow">
-        <h2 className="font-bold mb-4">📦 Đơn hàng theo ngày</h2>
-
-        {orders.length === 0 ? (
-          <p className="text-gray-400 text-center">
-            Không có dữ liệu
-          </p>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={orders}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="total" fill="#3b82f6" />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+        <h2 className="font-bold mb-4">📦 Tổng quan trạng thái đơn hàng</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-xl bg-slate-100 p-4">Tổng đơn: {ordersSummary.total || 0}</div>
+          <div className="rounded-xl bg-yellow-100 p-4">Pending: {ordersSummary.pending || 0}</div>
+          <div className="rounded-xl bg-green-100 p-4">Completed: {ordersSummary.completed || 0}</div>
+          <div className="rounded-xl bg-red-100 p-4">Cancelled: {ordersSummary.cancelled || 0}</div>
+        </div>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { productAPI } from "../../services/api";
 
 export default function FlashSalePage() {
   const [sales, setSales] = useState([]);
@@ -6,8 +7,10 @@ export default function FlashSalePage() {
     name: "",
     discount: "",
     start: "",
-    end: ""
+    end: "",
+    productIds: [],
   });
+  const [products, setProducts] = useState([]);
 
   const fetchSales = useCallback(async () => {
     const res = await fetch("http://localhost:5000/api/flash-sale/active");
@@ -19,6 +22,13 @@ export default function FlashSalePage() {
   useEffect(() => {
     fetchSales();
   }, [fetchSales]);
+
+  useEffect(() => {
+    productAPI
+      .getProducts({ limit: 100 })
+      .then((res) => setProducts(res?.data?.items || []))
+      .catch((err) => console.error(err));
+  }, []);
 
   // CREATE
   const handleCreate = async () => {
@@ -32,7 +42,8 @@ export default function FlashSalePage() {
         name: form.name,
         discount_percent: Number(form.discount),
         start_date: form.start,
-        end_date: form.end
+        end_date: form.end,
+        productIds: form.productIds,
       })
     });
 
@@ -49,6 +60,18 @@ export default function FlashSalePage() {
     });
 
     fetchSales();
+  };
+
+  const toggleProductSelection = (productId) => {
+    setForm((prev) => {
+      const exists = prev.productIds.includes(productId);
+      return {
+        ...prev,
+        productIds: exists
+          ? prev.productIds.filter((id) => id !== productId)
+          : [...prev.productIds, productId],
+      };
+    });
   };
 
   return (
@@ -81,6 +104,22 @@ export default function FlashSalePage() {
           className="border p-2 w-full"
           onChange={(e)=>setForm({...form,end:e.target.value})}
         />
+
+        <div>
+          <p className="font-semibold mb-2">Chọn sản phẩm</p>
+          <div className="max-h-48 overflow-auto border rounded p-2 space-y-1">
+            {products.map((p) => (
+              <label key={p.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.productIds.includes(p.id)}
+                  onChange={() => toggleProductSelection(p.id)}
+                />
+                <span>{p.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
         <button
           onClick={handleCreate}

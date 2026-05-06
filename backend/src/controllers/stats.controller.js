@@ -67,35 +67,32 @@ const getSummary = async (req, res) => {
   }
 };
 
-// 📈 DOANH THU THEO NGÀY
+// 📈 DOANH THU THEO THÁNG
 const getRevenue = async (req, res) => {
   try {
-    const allOrders = await prisma.order.findMany({
+    const completedOrders = await prisma.order.findMany({
+      where: {
+        status: "completed",
+      },
       select: {
-        total: true,
         createdAt: true,
-        status: true,
+        total: true,
       },
     });
 
-    const orders = allOrders.filter(
-      (o) => o.status?.toLowerCase().trim() === "completed"
-    );
+    const monthlyMap = new Map();
 
-    const map = {};
-
-    orders.forEach((o) => {
-      const date = o.createdAt.toISOString().split("T")[0];
-
-      if (!map[date]) map[date] = 0;
-
-      map[date] += Number(o.total);
+    completedOrders.forEach((order) => {
+      const month = String(order.createdAt.getMonth() + 1);
+      monthlyMap.set(month, (monthlyMap.get(month) || 0) + Number(order.total || 0));
     });
 
-    const data = Object.keys(map).map((date) => ({
-      date,
-      total: map[date],
-    }));
+    const data = Array.from(monthlyMap.entries())
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([month, revenue]) => ({
+        month,
+        revenue,
+      }));
 
     res.json({
       success: true,
@@ -107,33 +104,24 @@ const getRevenue = async (req, res) => {
   }
 };
 
-// 📦 SỐ ĐƠN THEO NGÀY
+// 📦 TỔNG QUAN ĐƠN HÀNG THEO TRẠNG THÁI
 const getOrders = async (req, res) => {
   try {
-    const orders = await prisma.order.findMany({
-      select: {
-        createdAt: true,
-      },
-    });
-
-    const map = {};
-
-    orders.forEach((o) => {
-      const date = o.createdAt.toISOString().split("T")[0];
-
-      if (!map[date]) map[date] = 0;
-
-      map[date] += 1;
-    });
-
-    const data = Object.keys(map).map((date) => ({
-      date,
-      total: map[date],
-    }));
+    const [total, pending, completed, cancelled] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.count({ where: { status: "pending" } }),
+      prisma.order.count({ where: { status: "completed" } }),
+      prisma.order.count({ where: { status: "cancelled" } }),
+    ]);
 
     res.json({
       success: true,
-      data,
+      data: {
+        total,
+        pending,
+        completed,
+        cancelled,
+      },
     });
   } catch (err) {
     console.error(err);
@@ -170,7 +158,7 @@ const getTopProducts = async (req, res) => {
       return {
         id: p?.id,
         name: p?.name || "Không tên",
-        sold: i._sum.quantity,
+        sold: Number(i._sum.quantity || 0),
       };
     });
 

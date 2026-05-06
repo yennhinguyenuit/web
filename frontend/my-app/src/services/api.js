@@ -224,11 +224,12 @@ export const adminAPI = {
 
 // 🔥 COUPON
 export const couponAPI = {
-  getCoupons: () => api.get("/coupons"),
-  createCoupon: (data) => api.post("/coupons", data),
-  applyCoupon: (data) => api.post("/apply-coupon", data),
-  validateCoupon: (code, subtotal) =>
-    api.post("/validate-coupon", { code, subtotal }),
+  getCoupons: () => api.get("/admin/coupons"),
+  createCoupon: (data) => api.post("/admin/coupons", data),
+  updateCoupon: (id, data) => api.patch(`/admin/coupons/${id}`, data),
+  deleteCoupon: (id) => api.delete(`/admin/coupons/${id}`),
+  validateCoupon: (code, total) =>
+    api.post("/validate-coupon", { code, total }),
 };
 
 // 🔥 STATS

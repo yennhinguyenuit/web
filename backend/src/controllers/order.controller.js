@@ -556,17 +556,51 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+const ALLOWED_STATUS_TRANSITIONS = {
+  pending: new Set(["confirmed", "cancelled"]),
+  confirmed: new Set(["shipping", "cancelled"]),
+  shipping: new Set(["completed"]),
+};
+
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    let { status } = req.body;
+    const normalizedStatus = String(req.body?.status || "").toLowerCase().trim();
 
-    // 🔥 FIX QUAN TRỌNG
-    status = status?.toLowerCase().trim();
+    if (!normalizedStatus) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status transition",
+      });
+    }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng",
+      });
+    }
+
+    const currentStatus = String(existingOrder.status || "").toLowerCase().trim();
+    const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] || new Set();
+    if (!allowedNextStatuses.has(normalizedStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status transition",
+      });
+    }
 
     const updated = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: { status: normalizedStatus },
     });
 
     res.json({
@@ -580,6 +614,7 @@ const updateOrderStatus = async (req, res) => {
 };
 
 module.exports = {
+  createOrder,
   getMyOrders,
   getOrderDetail,
   cancelOrder,

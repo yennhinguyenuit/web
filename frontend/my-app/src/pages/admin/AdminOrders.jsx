@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import { adminAPI } from "../../services/api";
 
-const statusOptions = [
-  { value: "confirmed", label: "Confirmed" },
-  { value: "shipping", label: "Shipping" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
+const statusOptionsByCurrent = {
+  pending: [
+    { value: "confirmed", label: "Confirmed" },
+    { value: "cancelled", label: "Cancelled" },
+  ],
+  confirmed: [
+    { value: "shipping", label: "Shipping" },
+    { value: "cancelled", label: "Cancelled" },
+  ],
+  shipping: [{ value: "completed", label: "Completed" }],
+  completed: [],
+  cancelled: [],
+};
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -39,6 +46,7 @@ export default function AdminOrders() {
       fetchOrders();
     } catch (err) {
       console.error(err);
+      alert(err?.message || "Không thể cập nhật trạng thái");
     } finally {
       setUpdatingId("");
     }
@@ -77,6 +85,7 @@ export default function AdminOrders() {
           <tbody>
             {orders.map((o) => {
               const id = o.id || o._id;
+              const availableOptions = statusOptionsByCurrent[o.status] || [];
 
               return (
                 <tr key={id} className="border-t hover:bg-red-50 transition">
@@ -100,14 +109,17 @@ export default function AdminOrders() {
 
                   <td>
                     <select
-                      value={o.status}
+                      value=""
                       onChange={(e) =>
                         handleChangeStatus(id, e.target.value)
                       }
-                      disabled={updatingId == id}
+                      disabled={updatingId == id || availableOptions.length === 0}
                       className="border border-red-300 rounded-lg px-3 py-2"
                     >
-                      {statusOptions.map((s) => (
+                      <option value="" disabled>
+                        {availableOptions.length ? "Chọn trạng thái" : "Không thể chuyển tiếp"}
+                      </option>
+                      {availableOptions.map((s) => (
                         <option key={s.value} value={s.value}>
                           {s.label}
                         </option>

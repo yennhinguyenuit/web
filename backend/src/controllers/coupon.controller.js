@@ -43,13 +43,14 @@ const mapCoupon = (coupon) => normalizeCoupon(coupon);
 
 const validateCoupon = async (req, res) => {
   try {
-    const { code, subtotal } = req.body;
+    const { code, subtotal, total } = req.body;
 
     if (!code) {
       return sendError(res, "Vui lòng nhập mã giảm giá", 400);
     }
 
-    const parsedSubtotal = Number(subtotal);
+    const amountToValidate = subtotal ?? total;
+    const parsedSubtotal = Number(amountToValidate);
     if (Number.isNaN(parsedSubtotal) || parsedSubtotal < 0) {
       return sendError(res, "Subtotal không hợp lệ", 400);
     }
@@ -57,13 +58,14 @@ const validateCoupon = async (req, res) => {
     const { coupon, discount } = await validateCouponForCheckout({
       prisma,
       couponCode: code,
-      userId: req.user.id,
+      userId: req.user?.id,
       subtotal: parsedSubtotal,
     });
 
-    return sendSuccess(res, "Áp dụng mã giảm giá thành công", {
-      coupon: mapCoupon(coupon),
+    return res.json({
+      success: true,
       discount,
+      coupon: mapCoupon(coupon),
       subtotal: parsedSubtotal,
       finalSubtotal: parsedSubtotal - discount,
     });
