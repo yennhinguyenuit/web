@@ -10,9 +10,13 @@ export default function OrderDetailPage() {
   const [payment, setPayment] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
-  const isPayOS = useMemo(() => (
-    String(order?.paymentMethod?.code || '').toLowerCase() === 'payos'
+  const paymentCode = useMemo(() => (
+    String(order?.paymentMethod?.code || '').toLowerCase()
   ), [order?.paymentMethod?.code]);
+
+  const isPayOS = paymentCode === 'payos';
+  const isBankTransfer = paymentCode === 'bank_transfer';
+  const isOnlinePayment = order?.paymentMethod?.isOnline;
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -28,9 +32,10 @@ export default function OrderDetailPage() {
     fetchOrder();
   }, [id]);
 
+  // Handle payment for both PayOS and Bank Transfer
   useEffect(() => {
     if (!order) return;
-    if (!isPayOS) return;
+    if (!isOnlinePayment) return;
     if (order.paymentStatus === 'paid') return;
 
     let ignore = false;
@@ -43,6 +48,7 @@ export default function OrderDetailPage() {
         if (!ignore) setPayment(intentRes.data);
       } catch (err) {
         console.error(err);
+        if (!ignore) setPaymentLoading(false);
       } finally {
         if (!ignore) setPaymentLoading(false);
       }
@@ -77,7 +83,7 @@ export default function OrderDetailPage() {
       if (intervalId) clearInterval(intervalId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id, isPayOS, order?.paymentStatus]);
+  }, [order?.id, isOnlinePayment, order?.paymentStatus]);
 
   const handleCancel = async () => {
     if (!window.confirm('Bạn chắc chắn muốn hủy đơn?')) return;
@@ -97,7 +103,7 @@ export default function OrderDetailPage() {
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-4">
 
-      {/* 🔥 TIMELINE (THÊM Ở ĐÂY) */}
+      {/* 🔥 TIMELINE */}
       <div className="bg-white p-4 rounded shadow">
         <p className="font-semibold mb-3 text-red-600">
           📦 Trạng thái đơn hàng
@@ -105,78 +111,129 @@ export default function OrderDetailPage() {
         <OrderTimeline status={order.status} />
       </div>
 
-      {/* 💳 PAYMENT (PayOS) */}
-      {isPayOS && (
+      {/* 💳 PAYMENT SECTION - Online Payment */}
+      {isOnlinePayment && (
         <div className="bg-white p-4 rounded shadow">
-          <p className="font-semibold mb-2 text-red-600">💳 Thanh toán PayOS</p>
+          <p className="font-semibold mb-3 text-red-600">💳 Thanh toán {order.paymentMethod?.name}</p>
 
           {order.paymentStatus === 'paid' ? (
-            <p className="text-green-600 font-medium">Đơn hàng đã được thanh toán.</p>
-          ) : paymentLoading ? (
-            <p className="text-sm text-gray-500">Đang tạo liên kết thanh toán...</p>
-          ) : payment?.checkout?.url ? (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600">
-                Mở trang PayOS để quét QR / thanh toán. Sau khi thanh toán xong, trang này sẽ tự cập nhật trạng thái.
-              </p>
-
-              {(() => {
-                const checkoutUrl = payment?.checkout?.url || '';
-                const qrCode = payment?.checkout?.qrCode || '';
-
-                // Prefer generating QR from checkoutUrl (most reliable for PayOS hosted page).
-                const qrData = checkoutUrl || qrCode;
-                if (!qrData) return null;
-
-                // If PayOS returns an image URL or data URL, render directly.
-                const qrLooksLikeImageUrl =
-                  typeof qrCode === 'string' &&
-                  (qrCode.startsWith('http://') ||
-                    qrCode.startsWith('https://') ||
-                    qrCode.startsWith('data:image/'));
-
-                const imgSrc = qrLooksLikeImageUrl
-                  ? qrCode
-                  : `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-                      String(qrData)
-                    )}`;
-
-                return (
-                  <div className="flex justify-center">
-                    <img
-                      alt="PayOS QR"
-                      className="w-56 h-56 border rounded"
-                      src={imgSrc}
-                    />
-                  </div>
-                );
-              })()}
-
-              <a
-                href={payment.checkout.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block bg-red-600 text-white px-4 py-2 rounded font-semibold"
-              >
-                Mở trang thanh toán PayOS
-              </a>
-
-              <button
-                onClick={() => paymentAPI.getPaymentStatus(order.id).then((r) => {
-                  setPayment(r?.data?.payment || null);
-                  const nextStatus = r?.data?.paymentStatus;
-                  if (nextStatus) setOrder((prev) => (prev ? { ...prev, paymentStatus: nextStatus } : prev));
-                }).catch(() => {})}
-                className="ml-3 inline-block border px-4 py-2 rounded"
-              >
-                Kiểm tra trạng thái
-              </button>
+            <div className="bg-green-50 p-3 rounded border border-green-200">
+              <p className="text-green-700 font-medium">✅ Đơn hàng đã được thanh toán.</p>
             </div>
-          ) : (
-            <p className="text-sm text-red-600">
-              Không tạo được QR/Link PayOS. Hãy kiểm tra cấu hình PayOS (env) và thử lại.
-            </p>
-          )}
+          ) : paymentLoading ? (
+            <p className="text-sm text-gray-500">⏳ Đang tạo liên kết thanh toán...</p>
+          ) : payment ? (
+            <div className="space-y-3">
+              {/* BANK TRANSFER */}
+              {isBankTransfer && payment?.qr ? (
+                <>
+                  <p className="text-sm text-gray-600">
+                    📱 Quét mã QR bằng ứng dụng ngân hàng để thanh toán. Trang này sẽ tự cập nhật trạng thái trong vài giây.
+                  </p>
+
+                  {payment.qr?.imageUrl && (
+                    <div className="flex flex-col items-center">
+                      <img
+                        alt="Bank Transfer QR"
+                        className="w-64 h-64 border-2 border-red-200 rounded-lg"
+                        src={payment.qr.imageUrl}
+                      />
+                      {payment.qr?.expiresAt && (
+                        <p className="text-xs text-gray-500 mt-2">
+                          HSD: {new Date(payment.qr.expiresAt).toLocaleString('vi-VN')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200 text-sm">
+                    <p className="font-semibold text-blue-900">Thông tin chuyển khoản:</p>
+                    {payment.bankAccount?.accountName && (
+                      <p>👤 <strong>Tên tài khoản:</strong> {payment.bankAccount.accountName}</p>
+                    )}
+                    {payment.bankAccount?.accountNo && (
+                      <p>🏦 <strong>Số tài khoản:</strong> {payment.bankAccount.accountNo}</p>
+                    )}
+                    {payment.bankAccount?.transferContent && (
+                      <p>📝 <strong>Nội dung:</strong> {payment.bankAccount.transferContent}</p>
+                    )}
+                    <p>💰 <strong>Số tiền:</strong> {Number(payment.amount).toLocaleString()}đ</p>
+                  </div>
+
+                  <button
+                    onClick={() => paymentAPI.getPaymentStatus(order.id).then((r) => {
+                      setPayment(r?.data?.payment || null);
+                      const nextStatus = r?.data?.paymentStatus;
+                      if (nextStatus) setOrder((prev) => (prev ? { ...prev, paymentStatus: nextStatus } : prev));
+                    }).catch(() => alert('Lỗi kiểm tra trạng thái'))}
+                    className="w-full border border-gray-300 px-4 py-2 rounded text-center hover:bg-gray-50"
+                  >
+                    🔄 Kiểm tra trạng thái
+                  </button>
+                </>
+              ) : isPayOS && payment?.checkout?.url ? (
+                <>
+                  <p className="text-sm text-gray-600">
+                    🌐 Mở trang PayOS để quét QR / thanh toán. Sau khi thanh toán xong, trang này sẽ tự cập nhật trạng thái.
+                  </p>
+
+                  {(() => {
+                    const checkoutUrl = payment?.checkout?.url || '';
+                    const qrCode = payment?.checkout?.qrCode || '';
+
+                    const qrData = checkoutUrl || qrCode;
+                    if (!qrData) return null;
+
+                    const qrLooksLikeImageUrl =
+                      typeof qrCode === 'string' &&
+                      (qrCode.startsWith('http://') ||
+                        qrCode.startsWith('https://') ||
+                        qrCode.startsWith('data:image/'));
+
+                    const imgSrc = qrLooksLikeImageUrl
+                      ? qrCode
+                      : `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
+                          String(qrData)
+                        )}`;
+
+                    return (
+                      <div className="flex justify-center">
+                        <img
+                          alt="PayOS QR"
+                          className="w-56 h-56 border-2 border-red-200 rounded-lg"
+                          src={imgSrc}
+                        />
+                      </div>
+                    );
+                  })()}
+
+                  <a
+                    href={payment.checkout.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block w-full text-center bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700"
+                  >
+                    🔗 Mở trang thanh toán PayOS
+                  </a>
+
+                  <button
+                    onClick={() => paymentAPI.getPaymentStatus(order.id).then((r) => {
+                      setPayment(r?.data?.payment || null);
+                      const nextStatus = r?.data?.paymentStatus;
+                      if (nextStatus) setOrder((prev) => (prev ? { ...prev, paymentStatus: nextStatus } : prev));
+                    }).catch(() => alert('Lỗi kiểm tra trạng thái'))}
+                    className="w-full border border-gray-300 px-4 py-2 rounded text-center hover:bg-gray-50"
+                  >
+                    🔄 Kiểm tra trạng thái
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-red-600">
+                  ⚠️ Không tạo được mã thanh toán. Hãy kiểm tra cấu hình hệ thống và thử lại.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       )}
 

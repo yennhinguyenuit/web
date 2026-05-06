@@ -232,6 +232,13 @@ export const couponAPI = {
     api.post("/validate-coupon", { code, total }),
 };
 
+// 🔥 FLASH SALE
+export const flashSaleAPI = {
+  getActiveFlashSale: () => api.get("/flash-sale/active"),
+  createFlashSale: (data) => api.post("/flash-sale", data),
+  deleteFlashSale: (id) => api.delete(`/flash-sale/${id}`),
+};
+
 // 🔥 STATS
 export const statsAPI = {
   getRevenue: () => api.get("/stats/revenue"),
