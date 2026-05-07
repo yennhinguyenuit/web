@@ -340,3 +340,36 @@ model FlashSaleItem {
 
   @@unique([flashSaleId, productId])
 }
+
+model Conversation {
+  id          String     @id @default(uuid())
+  buyerId     String
+  sellerId    String
+  productId   String?
+  orderId     String?
+  subject     String?
+  isActive    Boolean    @default(true)
+  messages    Message[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([buyerId, sellerId, productId])
+  @@index([buyerId, createdAt])
+  @@index([sellerId, createdAt])
+  @@index([isActive])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  content        String
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([isRead])
+}

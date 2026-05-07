@@ -254,5 +254,11 @@ export const userAPI = {
   deleteUser: (id) => api.delete(`/users/${id}`),
 };
 
+// CHATBOT
+export const chatbotAPI = {
+  sendMessage: (message, history = []) =>
+    api.post("/chatbot", { message, history }),
+};
+
 export { APIError, API_URL };
 export default api;

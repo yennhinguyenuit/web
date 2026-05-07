@@ -19,6 +19,8 @@ const couponRoutes = require("./routes/coupon.routes");
 const statsRoutes = require("./routes/stats.routes");
 const userRoutes = require("./routes/user.routes");
 const flashSaleRoutes = require("./routes/flash-sale.routes");
+const chatbotRoutes = require("./routes/chatbot.routes");
+const messagingRoutes = require("./routes/messaging.routes");
 const { validateCoupon } = require("./controllers/coupon.controller");
 
 const { isAppError } = require("./utils/app-error");
@@ -84,6 +86,8 @@ app.post("/api/validate-coupon", validateCoupon);
 app.use("/api/flash-sale", flashSaleRoutes);
 app.use("/api/stats", statsRoutes); // 👈 CHỈ 1 LẦN
 app.use("/api/users", userRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/messaging", messagingRoutes);
 
 // 🔥 404
 app.use((req, res) => {
