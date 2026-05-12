@@ -14,12 +14,15 @@ const {
   buildBankTransferPaymentPayload,
   buildPayOSPaymentPayload,
 } = require("../utils/payment");
+const {
+  assertCustomerCanCancelOrder,
+  buildOrderStatusUpdateData,
+  applyOrderCancellationSideEffects,
+} = require("../utils/order-flow");
 
-const generateOrderCode = () => {
-  return `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-};
-
-const COD_PAYMENT_CODE = "cod";
+const generateOrderCode = () => (
+  `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+);
 
 const formatOrderListItem = (order) => {
   return {
@@ -304,29 +307,49 @@ const createOrder = async (req, res) => {
         throw createError("Giỏ hàng đang trống", 400);
       }
 
-      const sourceItems = (items && items.length > 0)
-        ? items.map(i => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            color: i.color || null,
-            size: i.size || null,
-          }))
-        : cart.items.map(i => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            color: i.color || null,
-            size: i.size || null,
-          }));
+      const rawItems = (items && items.length > 0) ? items : cart.items;
+      const itemMap = new Map();
 
-      const productIds = sourceItems.map(i => i.productId);
+      for (const item of rawItems) {
+        const productId = item.productId;
+        const quantity = Number(item.quantity);
+        const color = item.color ? String(item.color).trim() : null;
+        const size = item.size ? String(item.size).trim() : null;
+
+        if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+          throw createError("Sản phẩm hoặc số lượng không hợp lệ", 400);
+        }
+
+        const key = `${productId}:${color || ""}:${size || ""}`;
+        const existing = itemMap.get(key);
+        itemMap.set(key, {
+          productId,
+          color,
+          size,
+          quantity: (existing?.quantity || 0) + quantity,
+        });
+      }
+
+      const sourceItems = Array.from(itemMap.values());
+      const productIds = [...new Set(sourceItems.map((item) => item.productId))];
 
       const products = await tx.product.findMany({
-        where: { id: { in: productIds } }
+        where: {
+          id: { in: productIds },
+          isActive: true,
+          isDeleted: false,
+        },
       });
 
+      if (products.length !== productIds.length) {
+        throw createError("Có sản phẩm không tồn tại hoặc đang ngừng bán", 400);
+      }
+
+      const productById = new Map(products.map((product) => [product.id, product]));
+
       const subtotal = sourceItems.reduce((sum, item) => {
-        const p = products.find(p => p.id === item.productId);
-        return sum + Number(p.price) * item.quantity;
+        const product = productById.get(item.productId);
+        return sum + Number(product.price) * item.quantity;
       }, 0);
 
       const { coupon, discount } = await validateCouponForCheckout({
@@ -355,18 +378,19 @@ const createOrder = async (req, res) => {
           },
         });
       }
-/////////
       for (const item of sourceItems) {
-       const p = products.find(p => p.id === item.productId);
+        const product = productById.get(item.productId);
+        const p = product;
 
-        if (!p) {
+        if (!product) {
           throw createError("Sản phẩm không tồn tại", 400);
         }
 
         const updated = await tx.product.updateMany({
           where: {
-            id: p.id,
+            id: product.id,
             isActive: true,
+            isDeleted: false,
             stock: {
               gte: item.quantity,
             },
@@ -405,9 +429,10 @@ const createOrder = async (req, res) => {
       });
 
       for (const item of sourceItems) {
-        const p = products.find(p => p.id === item.productId);
+        const product = productById.get(item.productId);
+        const p = product;
 
-        if (!p) {
+        if (!product) {
           throw createError("Sản phẩm không tồn tại", 400);
         }
         await tx.orderItem.create({
@@ -525,11 +550,15 @@ const getMyOrders = async (req, res) => {
         items: true,
         paymentMethod: true,
         shippingMethod: true,
+        transactions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return sendSuccess(res, "Lấy danh sách đơn hàng thành công", orders);
+    return sendSuccess(res, "Lấy danh sách đơn hàng thành công", orders.map(formatOrderListItem));
   } catch (error) {
     console.error(error);
     return sendError(res, "Lỗi server", 500);
@@ -581,95 +610,155 @@ const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const order = await prisma.order.findUnique({
-      where: { id },
+    const cancelledOrder = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findFirst({
+        where: { id, userId: req.user.id },
+        include: {
+          items: {
+            select: {
+              productId: true,
+              quantity: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              code: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw createError("Không tìm thấy đơn hàng", 404);
+      }
+
+      assertCustomerCanCancelOrder(order);
+
+      const updateData = buildOrderStatusUpdateData({
+        order,
+        status: "cancelled",
+      });
+
+      await applyOrderCancellationSideEffects(tx, order, "khách hàng");
+
+      await tx.order.update({
+        where: { id },
+        data: updateData,
+      });
+
+      return tx.order.findUnique({
+        where: { id },
+        include: {
+          address: true,
+          paymentMethod: true,
+          shippingMethod: true,
+          coupon: true,
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          transactions: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
     });
 
-    if (!order) {
-      return sendError(res, "Không tìm thấy đơn hàng", 404);
-    }
-
-    await prisma.order.update({
-      where: { id },
-      data: { status: "cancelled" },
-    });
-
-    return sendSuccess(res, "Đã hủy đơn");
+    return sendSuccess(res, "Đã hủy đơn hàng", formatOrderDetail(cancelledOrder));
   } catch (error) {
     console.error(error);
+    if (isAppError(error)) {
+      return sendError(res, error.message, error.statusCode);
+    }
     return sendError(res, "Lỗi server", 500);
   }
-};
-
-const ALLOWED_STATUS_TRANSITIONS = {
-  pending: new Set(["confirmed", "cancelled"]),
-  confirmed: new Set(["shipping", "cancelled"]),
-  shipping: new Set(["completed"]),
 };
 
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const normalizedStatus = String(req.body?.status || "").toLowerCase().trim();
+    const { status, paymentStatus } = req.body || {};
 
-    if (!normalizedStatus) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status transition",
-      });
+    if (status === undefined) {
+      return sendError(res, "Thiếu trạng thái đơn hàng cần cập nhật", 400);
     }
 
-    const existingOrder = await prisma.order.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        status: true,
-        paymentStatus: true,
-        paymentMethod: {
-          select: {
-            code: true,
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: {
+          items: {
+            select: {
+              productId: true,
+              quantity: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              code: true,
+            },
           },
         },
-      },
-    });
-
-    if (!existingOrder) {
-      return res.status(404).json({
-        success: false,
-        message: "Không tìm thấy đơn hàng",
       });
-    }
 
-    const currentStatus = String(existingOrder.status || "").toLowerCase().trim();
-    const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] || new Set();
-    if (!allowedNextStatuses.has(normalizedStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status transition",
+      if (!order) {
+        throw createError("Không tìm thấy đơn hàng", 404);
+      }
+
+      const updateData = buildOrderStatusUpdateData({
+        order,
+        status,
+        paymentStatus,
       });
-    }
 
-    const updateData = { status: normalizedStatus };
-    if (
-      normalizedStatus === "completed" &&
-      existingOrder.paymentMethod?.code === COD_PAYMENT_CODE &&
-      existingOrder.paymentStatus !== "paid"
-    ) {
-      updateData.paymentStatus = "paid";
-    }
+      if (updateData.status === "cancelled") {
+        await applyOrderCancellationSideEffects(tx, order, "admin");
+      }
 
-    const updated = await prisma.order.update({
-      where: { id },
-      data: updateData,
+      await tx.order.update({
+        where: { id },
+        data: updateData,
+      });
+
+      return tx.order.findUnique({
+        where: { id },
+        include: {
+          address: true,
+          paymentMethod: true,
+          shippingMethod: true,
+          coupon: true,
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+          transactions: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
     });
 
-    res.json({
-      success: true,
-      data: updated,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+    return sendSuccess(res, "Cập nhật đơn hàng thành công", formatOrderDetail(updatedOrder));
+  } catch (error) {
+    console.error(error);
+    if (isAppError(error)) {
+      return sendError(res, error.message, error.statusCode);
+    }
+    return sendError(res, "Lỗi server", 500);
   }
 };
 

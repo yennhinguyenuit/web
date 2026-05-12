@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { paymentAPI } from '../services/api';
 
+const PAYMENT_STATUS_LABELS = {
+  unpaid: 'Chưa thanh toán',
+  pending: 'Đang chờ thanh toán',
+  paid: 'Đã thanh toán',
+  failed: 'Thanh toán thất bại',
+  expired: 'Đã hết hạn',
+  refunded: 'Đã hoàn tiền',
+  cancelled: 'Đã hủy',
+};
+
+const normalizeStatus = (value) => String(value || '').toLowerCase();
+
 export default function PaymentResultPage() {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
@@ -14,7 +26,7 @@ export default function PaymentResultPage() {
 
     const loadStatus = async () => {
       if (!orderId) {
-        setError('Khong tim thay don hang can kiem tra.');
+        setError('Không tìm thấy đơn hàng cần kiểm tra.');
         return;
       }
 
@@ -25,12 +37,12 @@ export default function PaymentResultPage() {
         setStatus(res.data);
         setError('');
 
-        if (res?.data?.paymentStatus === 'paid' && intervalId) {
+        if (normalizeStatus(res?.data?.paymentStatus) === 'paid' && intervalId) {
           clearInterval(intervalId);
         }
       } catch (err) {
         if (ignore) return;
-        setError(err.message || 'Khong the lay trang thai thanh toan');
+        setError(err.message || 'Không thể lấy trạng thái thanh toán');
       }
     };
 
@@ -47,31 +59,37 @@ export default function PaymentResultPage() {
   }, [orderId]);
 
   const checkoutUrl = status?.payment?.checkout?.url;
-  const isPaid = status?.paymentStatus === 'paid';
+  const paymentStatus = normalizeStatus(status?.paymentStatus);
+  const isPaid = paymentStatus === 'paid';
 
   return (
-    <div className="max-w-2xl mx-auto p-10 space-y-4">
-      <h1 className="text-3xl font-bold">Ket qua thanh toan</h1>
+    <div className="mx-auto max-w-2xl space-y-4 p-10">
+      <h1 className="text-3xl font-bold">Kết quả thanh toán</h1>
       {error ? <p className="text-red-600">{error}</p> : null}
+
       {status ? (
-        <div className="bg-white rounded shadow p-6 space-y-2">
-          <p><strong>Ma don:</strong> {status.orderCode}</p>
-          <p><strong>Trang thai:</strong> {isPaid ? 'Da thanh toan' : 'Cho thanh toan'}</p>
-          <p><strong>Phuong thuc:</strong> {status.paymentMethod?.name}</p>
+        <div className="space-y-2 bg-white p-6 shadow">
+          <p><strong>Mã đơn:</strong> {status.orderCode}</p>
+          <p><strong>Trạng thái:</strong> {PAYMENT_STATUS_LABELS[paymentStatus] || status.paymentStatus}</p>
+          <p><strong>Phương thức:</strong> {status.paymentMethod?.name}</p>
         </div>
       ) : (
-        !error ? <p>Dang kiem tra trang thai...</p> : null
+        !error ? <p>Đang kiểm tra trạng thái...</p> : null
       )}
 
       {status ? (
         <div className="flex flex-wrap gap-3">
           {checkoutUrl && !isPaid ? (
-            <a href={checkoutUrl} className="px-4 py-2 bg-red-600 text-white rounded">
-              Mo lai trang PayOS
+            <a href={checkoutUrl} className="rounded bg-red-600 px-4 py-2 text-white">
+              Mở lại trang PayOS
             </a>
           ) : null}
-          {orderId ? <Link className="px-4 py-2 border rounded" to={`/orders/${orderId}`}>Xem chi tiet don hang</Link> : null}
-          <Link className="px-4 py-2 border rounded" to="/shop">Tiep tuc mua sam</Link>
+          {orderId ? (
+            <Link className="rounded border px-4 py-2" to={`/orders/${orderId}`}>
+              Xem chi tiết đơn hàng
+            </Link>
+          ) : null}
+          <Link className="rounded border px-4 py-2" to="/shop">Tiếp tục mua sắm</Link>
         </div>
       ) : null}
     </div>

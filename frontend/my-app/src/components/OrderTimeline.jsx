@@ -1,78 +1,69 @@
-export default function OrderTimeline({ status }) {
-  const steps = [
-    { key: 'pending', label: 'Chờ xử lý', icon: '📄' },
-    { key: 'confirmed', label: 'Đã xác nhận', icon: '💳' },
-    { key: 'shipping', label: 'Đang giao', icon: '🚚' },
-    { key: 'completed', label: 'Hoàn thành', icon: '⭐' }
-  ];
+const steps = [
+  { key: 'pending', label: 'Chờ xử lý' },
+  { key: 'confirmed', label: 'Đã xác nhận' },
+  { key: 'shipping', label: 'Đang giao' },
+  { key: 'completed', label: 'Hoàn thành' },
+];
 
-  const currentIndex = steps.findIndex(s => s.key === status);
+export default function OrderTimeline({ status }) {
+  const currentIndex = steps.findIndex((step) => step.key === status);
+
+  if (status === 'cancelled') {
+    return (
+      <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        Đơn hàng đã hủy
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center justify-between w-full mb-6">
-
+    <div className="mb-6 flex w-full items-center justify-between">
       {steps.map((step, index) => {
-        const isDone = index < currentIndex;
+        const isDone = currentIndex >= 0 && index < currentIndex;
         const isCurrent = index === currentIndex;
 
         return (
-          <div key={step.key} className="flex-1 flex items-center">
-
-            {/* STEP */}
+          <div key={step.key} className="flex flex-1 items-center">
             <div className="flex flex-col items-center">
-
-              {/* CIRCLE */}
               <div
                 className={`
-                  w-10 h-10 flex items-center justify-center 
-                  rounded-full border-2 text-lg transition-all
-
+                  flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all
                   ${isCurrent
-                    ? "bg-red-500 border-red-500 text-white shadow-md scale-110"
+                    ? 'scale-110 border-red-500 bg-red-500 text-white shadow-md'
                     : isDone
-                    ? "border-red-500 text-red-500 bg-white"
-                    : "border-gray-300 text-gray-300 bg-white"}
+                      ? 'border-red-500 bg-white text-red-500'
+                      : 'border-gray-300 bg-white text-gray-300'}
                 `}
               >
-                {step.icon}
+                {index + 1}
               </div>
 
-              {/* TEXT */}
               <p
-                className={`mt-2 text-xs ${
+                className={`mt-2 text-center text-xs ${
                   isCurrent
-                    ? "text-red-600 font-semibold"
+                    ? 'font-semibold text-red-600'
                     : isDone
-                    ? "text-red-500"
-                    : "text-gray-400"
+                      ? 'text-red-500'
+                      : 'text-gray-400'
                 }`}
               >
                 {step.label}
               </p>
-
             </div>
 
-            {/* LINE */}
             {index < steps.length - 1 && (
-              <div className="flex-1 h-[2px] mx-2 relative">
-
-                {/* base */}
+              <div className="relative mx-2 h-[2px] flex-1">
                 <div className="absolute inset-0 bg-gray-300" />
-
-                {/* active */}
                 <div
                   className={`absolute inset-0 transition-all duration-500 ${
-                    index < currentIndex ? "bg-red-500" : "bg-transparent"
+                    index < currentIndex ? 'bg-red-500' : 'bg-transparent'
                   }`}
                 />
-
               </div>
             )}
-
           </div>
         );
       })}
-
     </div>
   );
 }

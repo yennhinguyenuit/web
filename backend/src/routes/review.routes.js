@@ -7,9 +7,11 @@ const {
   createReview,
   updateMyReview,
   deleteMyReview,
+  getEligibleProductsForReview,
 } = require("../controllers/review.controller");
 
 router.get("/product/:productId", getProductReviews);
+router.get("/eligible/products", authMiddleware, getEligibleProductsForReview);
 router.post("/product/:productId", authMiddleware, createReview);
 router.patch("/:id", authMiddleware, updateMyReview);
 router.delete("/:id", authMiddleware, deleteMyReview);

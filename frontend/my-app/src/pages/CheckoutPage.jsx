@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { checkoutAPI, orderAPI } from '../services/api';
 
+const SUPPORTED_PAYMENT_CODES = new Set(['cod', 'payos', 'bank_transfer']);
+
+const formatCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { cart, clearCart } = useCart();
-  const items = cart?.items || [];
-  const getCartItemKey = (item) =>
-    `${item.productId}:${item.color || ''}:${item.size || ''}`;
+  const items = useMemo(() => cart?.items || [], [cart?.items]);
 
   const [form, setForm] = useState({
     firstName: '',
@@ -19,22 +21,50 @@ export default function CheckoutPage() {
     ward: '',
     district: '',
     city: '',
-    shipping: 'standard',
-    payment: 'cod'
+    shipping: '',
+    payment: '',
   });
 
   const [loading, setLoading] = useState(false);
-
+  const [shippingMethods, setShippingMethods] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [loadingShippingMethods, setLoadingShippingMethods] = useState(false);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
 
-  const SUPPORTED_PAYMENT_CODES = new Set(['cod', 'payos', 'bank_transfer']);
-
-  // COUPON
   const [coupon, setCoupon] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState('');
   const [loadingCoupon, setLoadingCoupon] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadShippingMethods = async () => {
+      setLoadingShippingMethods(true);
+      try {
+        const res = await checkoutAPI.getShippingMethods();
+        const methods = Array.isArray(res?.data) ? res.data : [];
+
+        if (ignore) return;
+        setShippingMethods(methods);
+        setForm((prev) => ({
+          ...prev,
+          shipping: prev.shipping || methods[0]?.code || '',
+        }));
+      } catch (err) {
+        console.error(err);
+        if (!ignore) setShippingMethods([]);
+      } finally {
+        if (!ignore) setLoadingShippingMethods(false);
+      }
+    };
+
+    loadShippingMethods();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -44,22 +74,20 @@ export default function CheckoutPage() {
       try {
         const res = await checkoutAPI.getPaymentMethods();
         const methods = Array.isArray(res?.data) ? res.data : [];
-        const enabledAndSupported = methods.filter((m) => (
-          m?.isEnabled &&
-          SUPPORTED_PAYMENT_CODES.has(m.code) &&
-          // if provider needs env config (PayOS / bank transfer), only show when configured
-          (m.isOnline ? Boolean(m.isConfigured) : true)
+        const enabledAndSupported = methods.filter((method) => (
+          method?.isEnabled &&
+          SUPPORTED_PAYMENT_CODES.has(method.code) &&
+          (method.isOnline ? Boolean(method.isConfigured) : true)
         ));
 
         if (ignore) return;
         setPaymentMethods(enabledAndSupported);
-
-        if (
-          !enabledAndSupported.some((m) => m.code === form.payment) &&
-          enabledAndSupported.length > 0
-        ) {
-          setForm((prev) => ({ ...prev, payment: enabledAndSupported[0].code }));
-        }
+        setForm((prev) => ({
+          ...prev,
+          payment: enabledAndSupported.some((method) => method.code === prev.payment)
+            ? prev.payment
+            : enabledAndSupported[0]?.code || '',
+        }));
       } catch (err) {
         console.error(err);
         if (!ignore) setPaymentMethods([]);
@@ -73,76 +101,125 @@ export default function CheckoutPage() {
     return () => {
       ignore = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const selectedShippingMethod = useMemo(
+    () => shippingMethods.find((method) => method.code === form.shipping) || null,
+    [form.shipping, shippingMethods]
+  );
+
+  const selectedPaymentMethod = useMemo(
+    () => paymentMethods.find((method) => method.code === form.payment) || null,
+    [form.payment, paymentMethods]
+  );
+
+  const subtotal = useMemo(
+    () => items.reduce((total, item) => (
+      total + Number(item.price || item.unitPrice || 0) * Number(item.quantity || 0)
+    ), 0),
+    [items]
+  );
+
+  const shippingFee = Number(selectedShippingMethod?.price || 0);
+  const total = Math.max(subtotal + shippingFee - discount, 0);
+
+  const getCartItemKey = (item) =>
+    `${item.productId}:${item.color || ''}:${item.size || ''}`;
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const subtotal = items.reduce((t, i) => t + i.price * i.quantity, 0);
-  const shippingFee = form.shipping === 'express' ? 50000 : 0;
-  const total = subtotal + shippingFee - discount;
-
-  // APPLY COUPON
   const applyCoupon = async () => {
-    if (!coupon) return;
+    const code = coupon.trim();
+    if (!code) {
+      setDiscount(0);
+      setCouponMsg('Vui lòng nhập mã giảm giá');
+      return;
+    }
 
     setLoadingCoupon(true);
     try {
-      const res = await checkoutAPI.validateCoupon(coupon, subtotal);
-      const value = res?.data?.discount ?? 0;
+      const res = await checkoutAPI.validateCoupon(code, subtotal);
+      const value = Number(res?.data?.discount || 0);
       setDiscount(value);
-      setCouponMsg(`✔ Giảm ${Number(value).toLocaleString()}đ`);
-    } catch {
+      setCouponMsg(value > 0 ? `Đã giảm ${formatCurrency(value)}` : 'Mã hợp lệ nhưng chưa có giảm giá');
+    } catch (err) {
       setDiscount(0);
-      setCouponMsg('Lỗi server');
+      setCouponMsg(err?.message || 'Không thể áp dụng mã giảm giá');
     } finally {
       setLoadingCoupon(false);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!form.firstName || !form.lastName || !form.phone || !form.address) {
-      alert('Nhập đầy đủ thông tin!');
-      return;
+  const validateForm = () => {
+    const requiredFields = [
+      ['firstName', 'họ'],
+      ['lastName', 'tên'],
+      ['phone', 'số điện thoại'],
+      ['address', 'địa chỉ'],
+      ['ward', 'phường/xã'],
+      ['district', 'quận/huyện'],
+      ['city', 'tỉnh/thành phố'],
+    ];
+
+    const missing = requiredFields.find(([key]) => !String(form[key] || '').trim());
+    if (missing) {
+      alert(`Vui lòng nhập ${missing[1]}`);
+      return false;
+    }
+
+    if (!selectedShippingMethod) {
+      alert('Vui lòng chọn phương thức vận chuyển');
+      return false;
+    }
+
+    if (!selectedPaymentMethod) {
+      alert('Vui lòng chọn phương thức thanh toán');
+      return false;
     }
 
     if (items.length === 0) {
-      alert('Giỏ hàng trống!');
-      return;
+      alert('Giỏ hàng trống');
+      return false;
     }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
     setLoading(true);
 
     try {
       const result = await orderAPI.createOrder({
         shippingAddress: {
-          name: `${form.firstName} ${form.lastName}`,
-          phone: form.phone,
-          address: form.address,
-          ward: form.ward,
-          district: form.district,
-          city: form.city
+          name: `${form.firstName.trim()} ${form.lastName.trim()}`,
+          phone: form.phone.trim(),
+          address: form.address.trim(),
+          ward: form.ward.trim(),
+          district: form.district.trim(),
+          city: form.city.trim(),
         },
-        shippingMethodCode: form.shipping,
-        paymentMethodCode: form.payment,
-        couponCode: coupon || null,
-        items: items.map(i => ({
-          productId: i.productId,
-          quantity: i.quantity,
-          color: i.color || null,
-          size: i.size || null
-        }))
+        shippingMethodCode: selectedShippingMethod.code,
+        paymentMethodCode: selectedPaymentMethod.code,
+        couponCode: coupon.trim() || null,
+        items: items.map((item) => ({
+          productId: item.productId,
+          quantity: Number(item.quantity),
+          color: item.color || null,
+          size: item.size || null,
+        })),
       });
 
       const orderId = result?.data?.id;
       const orderCode = result?.data?.code;
 
       clearCart();
-      // If user chose online payment, send them to order details (where payment UX can live).
-      // Otherwise show the generic success screen.
-      if (form.payment === 'payos' && orderId) {
+
+      if (selectedPaymentMethod.isOnline && orderId) {
         navigate(`/orders/${orderId}`);
         return;
       }
@@ -150,62 +227,58 @@ export default function CheckoutPage() {
       navigate('/order-success', {
         state: {
           orderId,
-          orderCode
-        }
+          orderCode,
+        },
       });
-
     } catch (err) {
       console.error(err);
-      alert(err?.message || 'Lỗi server');
+      alert(err?.message || 'Không thể đặt hàng');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen py-6 px-4">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* LEFT */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* CONTACT */}
+    <div className="min-h-screen bg-gray-50 px-4 py-6">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <Section title="Thông tin liên hệ" step={1}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input name="firstName" placeholder="Họ" onChange={handleChange}/>
-              <Input name="lastName" placeholder="Tên" onChange={handleChange}/>
-              <Input name="email" placeholder="Email" onChange={handleChange}/>
-              <Input name="phone" placeholder="SĐT" onChange={handleChange}/>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input name="firstName" placeholder="Họ" value={form.firstName} onChange={handleChange} />
+              <Input name="lastName" placeholder="Tên" value={form.lastName} onChange={handleChange} />
+              <Input name="email" placeholder="Email" value={form.email} onChange={handleChange} />
+              <Input name="phone" placeholder="Số điện thoại" value={form.phone} onChange={handleChange} />
             </div>
           </Section>
 
-          {/* ADDRESS */}
           <Section title="Địa chỉ giao hàng" step={2}>
-            <Input name="address" placeholder="Địa chỉ" onChange={handleChange}/>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <Input name="ward" placeholder="Phường/Xã" onChange={handleChange}/>
-              <Input name="district" placeholder="Quận/Huyện" onChange={handleChange}/>
+            <Input name="address" placeholder="Địa chỉ" value={form.address} onChange={handleChange} />
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Input name="ward" placeholder="Phường/Xã" value={form.ward} onChange={handleChange} />
+              <Input name="district" placeholder="Quận/Huyện" value={form.district} onChange={handleChange} />
             </div>
-            <Input name="city" placeholder="Tỉnh/TP" onChange={handleChange} className="mt-4"/>
+            <Input name="city" placeholder="Tỉnh/TP" value={form.city} onChange={handleChange} className="mt-4" />
           </Section>
 
-          {/* SHIPPING */}
           <Section title="Phương thức vận chuyển" step={3}>
-            <Option
-              label="Giao hàng tiêu chuẩn"
-              price="Miễn phí"
-              checked={form.shipping === 'standard'}
-              onChange={() => setForm({ ...form, shipping: 'standard' })}
-            />
-            <Option
-              label="Giao hàng nhanh"
-              price="50.000đ"
-              checked={form.shipping === 'express'}
-              onChange={() => setForm({ ...form, shipping: 'express' })}
-            />
+            {loadingShippingMethods ? (
+              <p className="text-sm text-gray-500">Đang tải phương thức vận chuyển...</p>
+            ) : shippingMethods.length === 0 ? (
+              <p className="text-sm text-red-600">Chưa có phương thức vận chuyển khả dụng.</p>
+            ) : (
+              shippingMethods.map((method) => (
+                <Option
+                  key={method.id || method.code}
+                  label={method.name}
+                  description={method.description}
+                  price={formatCurrency(method.price)}
+                  checked={form.shipping === method.code}
+                  onChange={() => setForm((prev) => ({ ...prev, shipping: method.code }))}
+                />
+              ))
+            )}
           </Section>
 
-          {/* PAYMENT */}
           <Section title="Phương thức thanh toán" step={4}>
             {loadingPaymentMethods ? (
               <p className="text-sm text-gray-500">Đang tải phương thức thanh toán...</p>
@@ -218,118 +291,125 @@ export default function CheckoutPage() {
                 <Option
                   key={method.id || method.code}
                   label={method.name}
+                  description={method.description}
                   checked={form.payment === method.code}
-                  onChange={() => setForm({ ...form, payment: method.code })}
+                  onChange={() => setForm((prev) => ({ ...prev, payment: method.code }))}
                 />
               ))
             )}
           </Section>
-
         </div>
 
-        {/* RIGHT */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-5 rounded shadow lg:sticky lg:top-6">
+          <div className="bg-white p-5 shadow lg:sticky lg:top-6">
+            <h2 className="mb-4 text-lg font-bold text-red-600">Đơn hàng</h2>
 
-            <h2 className="font-bold text-lg mb-4 text-red-600">Đơn hàng</h2>
-
-            {items.map(i => (
-              <div key={getCartItemKey(i)} className="flex gap-3 mb-3">
+            {items.map((item) => (
+              <div key={getCartItemKey(item)} className="mb-3 flex gap-3">
                 <img
-                  src={i.image || i.thumbnail || 'https://via.placeholder.com/100'}
-                  alt={i.name}
-                  className="w-14 h-14 object-cover rounded"
+                  src={item.image || item.thumbnail || 'https://via.placeholder.com/100'}
+                  alt={item.name || 'Sản phẩm'}
+                  className="h-14 w-14 rounded object-cover"
                 />
                 <div className="flex-1">
-                  <p className="text-sm">{i.name}</p>
-                  {(i.color || i.size) && (
+                  <p className="text-sm">{item.name}</p>
+                  {(item.color || item.size) && (
                     <p className="text-xs text-gray-500">
-                      {[i.color && `Màu: ${i.color}`, i.size && `Size: ${i.size}`]
+                      {[item.color && `Màu: ${item.color}`, item.size && `Size: ${item.size}`]
                         .filter(Boolean)
                         .join(' / ')}
                     </p>
                   )}
-                  <p className="text-xs">SL: {i.quantity}</p>
+                  <p className="text-xs">SL: {item.quantity}</p>
                 </div>
-                <p className="text-sm">{(i.price * i.quantity).toLocaleString()}đ</p>
+                <p className="text-sm">
+                  {formatCurrency(Number(item.price || item.unitPrice || 0) * Number(item.quantity || 0))}
+                </p>
               </div>
             ))}
 
-            {/* COUPON */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row">
               <input
                 value={coupon}
-                onChange={(e)=>setCoupon(e.target.value)}
+                onChange={(event) => setCoupon(event.target.value)}
                 placeholder="Nhập mã giảm giá"
-                className="border px-3 py-2 flex-1 rounded"
+                className="flex-1 rounded border px-3 py-2"
               />
               <button
+                type="button"
                 onClick={applyCoupon}
-                className="bg-red-600 text-white px-4 py-2 rounded"
+                disabled={loadingCoupon}
+                className="rounded bg-red-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:bg-gray-300"
               >
-                {loadingCoupon ? '...' : 'Áp dụng'}
+                {loadingCoupon ? 'Đang áp dụng' : 'Áp dụng'}
               </button>
             </div>
 
             {couponMsg && (
-              <p className={`text-sm mb-2 ${
-                discount > 0 ? "text-green-600" : "text-red-500"
-              }`}>
+              <p className={`mb-2 text-sm ${discount > 0 ? 'text-green-600' : 'text-red-500'}`}>
                 {couponMsg}
               </p>
             )}
 
-            <Row label="Tạm tính" value={subtotal}/>
-            <Row label="Ship" value={shippingFee}/>
-            <Row label="Giảm" value={`- ${discount}`}/>
+            <Row label="Tạm tính" value={subtotal} />
+            <Row label="Phí vận chuyển" value={shippingFee} />
+            <Row label="Giảm giá" value={-discount} />
 
-            <div className="flex justify-between font-bold mt-2">
+            <div className="mt-2 flex justify-between font-bold">
               <span>Tổng</span>
-              <span className="text-red-600">{total.toLocaleString()}đ</span>
+              <span className="text-red-600">{formatCurrency(total)}</span>
             </div>
 
             <button
+              type="button"
               onClick={handleSubmit}
-              className="w-full bg-red-600 text-white py-3 mt-4 rounded"
+              disabled={
+                loading ||
+                loadingPaymentMethods ||
+                loadingShippingMethods ||
+                paymentMethods.length === 0 ||
+                shippingMethods.length === 0
+              }
+              className="mt-4 w-full rounded bg-red-600 py-3 text-white disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {loading ? 'Đang xử lý...' : 'Đặt hàng'}
             </button>
-
           </div>
         </div>
-
       </div>
     </div>
   );
 }
 
-// COMPONENT
 function Section({ title, step, children }) {
   return (
-    <div className="bg-white p-5 rounded shadow">
-      <div className="flex gap-2 mb-3">
-        <div className="bg-red-600 text-white w-7 h-7 flex items-center justify-center rounded-full">
+    <section className="bg-white p-5 shadow">
+      <div className="mb-3 flex gap-2">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white">
           {step}
         </div>
         <h2 className="font-medium">{title}</h2>
       </div>
       {children}
-    </div>
+    </section>
   );
 }
 
-function Input(props) {
-  return <input {...props} className="border p-2 w-full rounded text-sm"/>;
+function Input({ className = '', ...props }) {
+  return <input {...props} className={`w-full rounded border p-2 text-sm ${className}`} />;
 }
 
-function Option({ label, checked, onChange, price }) {
+function Option({ label, description, checked, onChange, price }) {
   return (
-    <label className="flex justify-between border p-3 rounded mb-2 cursor-pointer">
+    <label className="mb-2 flex cursor-pointer justify-between rounded border p-3">
       <div className="flex gap-2">
-        <input type="radio" checked={checked} onChange={onChange}/>
-        <p>{label}</p>
+        <input type="radio" checked={checked} onChange={onChange} />
+        <div>
+          <p>{label}</p>
+          {description && <p className="text-xs text-gray-500">{description}</p>}
+        </div>
       </div>
-      {price && <span>{price}</span>}
+      {price && <span className="text-sm font-medium">{price}</span>}
     </label>
   );
 }
@@ -338,7 +418,7 @@ function Row({ label, value }) {
   return (
     <div className="flex justify-between text-sm">
       <span>{label}</span>
-      <span>{typeof value === 'number' ? value.toLocaleString() + 'đ' : value}</span>
+      <span>{formatCurrency(value)}</span>
     </div>
   );
 }

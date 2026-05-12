@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -19,11 +19,7 @@ export default function AdminDashboard() {
   const [ordersSummary, setOrdersSummary] = useState({});
   const [topProducts, setTopProducts] = useState([]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const s = await statsAPI.getSummary();
       const r = await statsAPI.getRevenue();
@@ -49,7 +45,11 @@ setTopProducts(t?.data || t || []);
     } catch (err) {
       console.error("❌ LOAD DATA ERROR:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   return (
     <div className="p-6 space-y-6">

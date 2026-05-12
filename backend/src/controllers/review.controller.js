@@ -248,9 +248,79 @@ const deleteMyReview = async (req, res) => {
   }
 };
 
+// 🔥 LẤY NHỮNG SẢN PHẨM CÓ THỂ ĐÁNH GIÁ (đã mua + đã nhận)
+const getEligibleProductsForReview = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Lấy những sản phẩm từ đơn hàng đã delivered
+    const deliveredOrders = await prisma.order.findMany({
+      where: {
+        userId,
+        status: "delivered",
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                image: true,
+                price: true,
+                ratingAvg: true,
+                reviewCount: true,
+                category: {
+                  select: { name: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Lấy những sản phẩm đã được đánh giá
+    const reviewedProducts = await prisma.review.findMany({
+      where: { userId },
+      select: { productId: true },
+    });
+
+    const reviewedProductIds = new Set(reviewedProducts.map(r => r.productId));
+
+    // Lọc những sản phẩm chưa được đánh giá
+    const eligibleProducts = [];
+    const seen = new Set();
+
+    for (const order of deliveredOrders) {
+      for (const item of order.items) {
+        const productId = item.product.id;
+        if (!seen.has(productId) && !reviewedProductIds.has(productId)) {
+          eligibleProducts.push({
+            ...item.product,
+            orderId: order.id,
+            orderCode: order.code,
+          });
+          seen.add(productId);
+        }
+      }
+    }
+
+    return sendSuccess(res, "Lấy danh sách sản phẩm cần đánh giá thành công", {
+      items: eligibleProducts,
+      count: eligibleProducts.length,
+    });
+  } catch (error) {
+    console.error("Get eligible products error:", error);
+    return sendError(res, "Lỗi server khi lấy danh sách sản phẩm", 500);
+  }
+};
+
 module.exports = {
   getProductReviews,
   createReview,
   updateMyReview,
   deleteMyReview,
+  getEligibleProductsForReview,
 };

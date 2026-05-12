@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
 
 import UserLayout from './layouts/UserLayout';
 import AdminLayout from './layouts/AdminLayout';
@@ -29,47 +28,8 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminCustomers from './pages/admin/AdminCustomers';
 
 import ProtectedRoute from './components/ProtectedRoute';
-import { cartAPI } from './services/api';
 
 function App() {
-useEffect(() => {
-  const syncCart = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const items = JSON.parse(localStorage.getItem('cart') || '[]');
-
-      if (!token || !items.length) return;
-
-      console.log('🔄 Sync cart...');
-
-      await Promise.allSettled(
-        items.map((item) =>
-          cartAPI.addToCart(
-            item.productId,
-            item.quantity,
-            {
-              color: item.color,
-              size: item.size,
-            }
-          )
-        )
-      );
-
-      // KHÔNG XOÁ LOCAL
-      // localStorage.removeItem('cart');
-
-      console.log('✅ Đồng bộ thành công');
-    } catch (error) {
-      console.error('❌ Lỗi sync:', error);
-    }
-  };
-
-  syncCart();
-  window.addEventListener('online', syncCart);
-
-  return () => window.removeEventListener('online', syncCart);
-}, []);
-
   return (
     <Routes>
       <Route element={<UserLayout />}>

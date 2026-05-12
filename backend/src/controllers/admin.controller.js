@@ -1,13 +1,12 @@
 const prisma = require('../config/prisma');
+const { createError, isAppError } = require('../utils/app-error');
+const {
+  normalizePaymentStatus,
+  assertPaymentStatus,
+  buildOrderStatusUpdateData,
+  applyOrderCancellationSideEffects,
+} = require('../utils/order-flow');
 
-const ORDER_STATUSES = ['pending', 'confirmed', 'shipping', 'completed', 'cancelled'];
-const PAYMENT_STATUSES = ['unpaid', 'pending', 'paid', 'failed', 'expired', 'refunded'];
-const COD_PAYMENT_CODE = 'cod';
-const ALLOWED_STATUS_TRANSITIONS = {
-  pending: new Set(['confirmed', 'cancelled']),
-  confirmed: new Set(['shipping', 'cancelled']),
-  shipping: new Set(['completed']),
-};
 const normalizeStringArray = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || '').trim()).filter(Boolean);
@@ -78,6 +77,8 @@ const mapAdminOrder = (order) => ({
         email: order.user.email,
       }
     : null,
+  customerName: order.user?.name || order.user?.email || 'Khách hàng',
+  customerEmail: order.user?.email || '',
   paymentMethod: order.paymentMethod?.name || order.paymentMethodName || '',
   paymentMethodCode: order.paymentMethod?.code || '',
   paymentMethodIsOnline: Boolean(order.paymentMethod?.isOnline),
@@ -696,80 +697,60 @@ exports.updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status, paymentStatus } = req.body;
 
-    const existingOrder = await prisma.order.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        status: true,
-        paymentStatus: true,
-        paymentMethod: {
-          select: {
-            code: true,
+    await prisma.$transaction(async (tx) => {
+      const existingOrder = await tx.order.findUnique({
+        where: { id },
+        include: {
+          items: {
+            select: {
+              productId: true,
+              quantity: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              code: true,
+            },
           },
         },
-      },
-    });
-
-    if (!existingOrder) {
-      return res.status(404).json({
-        success: false,
-        message: 'Không tìm thấy đơn hàng',
       });
-    }
 
-    const data = {};
-
-    if (status !== undefined) {
-      const nextStatus = String(status || '').toLowerCase().trim();
-      if (!ORDER_STATUSES.includes(nextStatus)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Trạng thái đơn hàng không hợp lệ',
-        });
+      if (!existingOrder) {
+        throw createError('Không tìm thấy đơn hàng', 404);
       }
 
-      const currentStatus = String(existingOrder.status || '').toLowerCase().trim();
-      const allowedNextStatuses = ALLOWED_STATUS_TRANSITIONS[currentStatus] || new Set();
-      if (!allowedNextStatuses.has(nextStatus)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid status transition',
-        });
+      const data = {};
+
+      if (status !== undefined) {
+        Object.assign(
+          data,
+          buildOrderStatusUpdateData({
+            order: existingOrder,
+            status,
+            paymentStatus,
+          })
+        );
       }
 
-      data.status = nextStatus;
-
-      if (
-        nextStatus === 'completed' &&
-        existingOrder.paymentMethod?.code === COD_PAYMENT_CODE &&
-        existingOrder.paymentStatus !== 'paid' &&
-        paymentStatus === undefined
-      ) {
-        data.paymentStatus = 'paid';
+      if (paymentStatus !== undefined && data.paymentStatus === undefined) {
+        const nextPaymentStatus = normalizePaymentStatus(paymentStatus);
+        assertPaymentStatus(nextPaymentStatus);
+        data.paymentStatus = nextPaymentStatus;
       }
-    }
 
-    if (paymentStatus !== undefined) {
-      if (!PAYMENT_STATUSES.includes(paymentStatus)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Trạng thái thanh toán không hợp lệ',
-        });
+      if (!Object.keys(data).length) {
+        throw createError('Không có dữ liệu cần cập nhật', 400);
       }
-      data.paymentStatus = paymentStatus;
-    }
 
-    if (!Object.keys(data).length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Không có dữ liệu cần cập nhật',
+      if (data.status === 'cancelled') {
+        await applyOrderCancellationSideEffects(tx, existingOrder, 'admin');
+      }
+
+      await tx.order.update({
+        where: { id },
+        data,
+        select: { id: true },
       });
-    }
-
-    await prisma.order.update({
-      where: { id },
-      data,
-      select: { id: true },
     });
 
     const updatedOrder = await getAdminOrderById(id);
@@ -781,6 +762,13 @@ exports.updateOrderStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('updateOrderStatus error:', error);
+    if (isAppError(error)) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Không thể cập nhật trạng thái đơn hàng',

@@ -1,54 +1,86 @@
-import { useEffect, useState } from "react";
-import { adminAPI } from "../../services/api";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { adminAPI } from '../../services/api';
+
+const ORDER_STATUS_LABELS = {
+  pending: 'Chờ xử lý',
+  confirmed: 'Đã xác nhận',
+  shipping: 'Đang giao',
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy',
+};
+
+const PAYMENT_STATUS_LABELS = {
+  unpaid: 'Chưa thanh toán',
+  pending: 'Đang chờ',
+  paid: 'Đã thanh toán',
+  failed: 'Thất bại',
+  expired: 'Hết hạn',
+  refunded: 'Đã hoàn tiền',
+  cancelled: 'Đã hủy',
+};
 
 const statusOptionsByCurrent = {
   pending: [
-    { value: "confirmed", label: "Confirmed" },
-    { value: "cancelled", label: "Cancelled" },
+    { value: 'confirmed', label: 'Xác nhận' },
+    { value: 'cancelled', label: 'Hủy đơn' },
   ],
   confirmed: [
-    { value: "shipping", label: "Shipping" },
-    { value: "cancelled", label: "Cancelled" },
+    { value: 'shipping', label: 'Giao hàng' },
+    { value: 'cancelled', label: 'Hủy đơn' },
   ],
-  shipping: [{ value: "completed", label: "Completed" }],
+  shipping: [{ value: 'completed', label: 'Hoàn thành' }],
   completed: [],
   cancelled: [],
 };
 
+const formatCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')}đ`;
+const formatDate = (value) => (value ? new Date(value).toLocaleDateString('vi-VN') : '');
+const normalizeStatus = (value) => String(value || '').toLowerCase();
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState("");
+  const [error, setError] = useState('');
+  const [updatingId, setUpdatingId] = useState('');
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
       const res = await adminAPI.getOrders();
-
-      console.log("Orders API:", res.data);
-
-      // 🔥 FIX QUAN TRỌNG
-      setOrders(res.data?.data || res.data || []);
+      setOrders(Array.isArray(res?.data) ? res.data : []);
     } catch (err) {
       console.error(err);
+      setError(err?.message || 'Không thể tải danh sách đơn hàng');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const summary = useMemo(() => ({
+    total: orders.length,
+    pending: orders.filter((order) => normalizeStatus(order.status) === 'pending').length,
+    shipping: orders.filter((order) => normalizeStatus(order.status) === 'shipping').length,
+    completed: orders.filter((order) => normalizeStatus(order.status) === 'completed').length,
+  }), [orders]);
 
   const handleChangeStatus = async (id, status) => {
+    if (!status) return;
+
     setUpdatingId(id);
     try {
-      await adminAPI.updateOrderStatus(id, { status });
-      fetchOrders();
+      const res = await adminAPI.updateOrderStatus(id, { status });
+      const updatedOrder = res?.data;
+      setOrders((prev) => prev.map((order) => (order.id === id ? updatedOrder || order : order)));
     } catch (err) {
       console.error(err);
-      alert(err?.message || "Không thể cập nhật trạng thái");
+      alert(err?.message || 'Không thể cập nhật trạng thái');
     } finally {
-      setUpdatingId("");
+      setUpdatingId('');
     }
   };
 
@@ -57,88 +89,112 @@ export default function AdminOrders() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-
+    <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold text-red-600">
-          📦 Quản lý đơn hàng
-        </h1>
-        <p className="text-gray-500">
-          Cập nhật trạng thái đơn hàng
-        </p>
+        <h1 className="text-3xl font-bold text-red-600">Quản lý đơn hàng</h1>
+        <p className="text-gray-500">Cập nhật trạng thái đơn hàng theo đúng luồng xử lý.</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg border border-red-100 overflow-hidden">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <SummaryCard label="Tổng đơn" value={summary.total} />
+        <SummaryCard label="Chờ xử lý" value={summary.pending} />
+        <SummaryCard label="Đang giao" value={summary.shipping} />
+        <SummaryCard label="Hoàn thành" value={summary.completed} />
+      </div>
 
-        <table className="w-full text-center">
-
-          <thead className="bg-red-500 text-white">
-            <tr>
-              <th className="p-4">Mã đơn</th>
-              <th>Khách hàng</th>
-              <th>Tổng tiền</th>
-              <th>Trạng thái</th>
-              <th>Đổi trạng thái</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {orders.map((o) => {
-              const id = o.id || o._id;
-              const availableOptions = statusOptionsByCurrent[o.status] || [];
-
-              return (
-                <tr key={id} className="border-t hover:bg-red-50 transition">
-                  <td className="p-4 font-medium text-gray-800">
-                    {o.code || id}
-                  </td>
-
-                  <td className="text-gray-600">
-                    {o.customerName || "Khách"}
-                  </td>
-
-                  <td className="text-red-600 font-semibold">
-                    {Number(o.total || 0).toLocaleString()}đ
-                  </td>
-
-                  <td>
-                    <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-600">
-                      {o.status}
-                    </span>
-                  </td>
-
-                  <td>
-                    <select
-                      value=""
-                      onChange={(e) =>
-                        handleChangeStatus(id, e.target.value)
-                      }
-                      disabled={updatingId == id || availableOptions.length === 0}
-                      className="border border-red-300 rounded-lg px-3 py-2"
-                    >
-                      <option value="" disabled>
-                        {availableOptions.length ? "Chọn trạng thái" : "Không thể chuyển tiếp"}
-                      </option>
-                      {availableOptions.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+      {error ? (
+        <div className="rounded border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>
+      ) : (
+        <div className="overflow-hidden rounded border border-red-100 bg-white shadow">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] text-left">
+              <thead className="bg-red-500 text-white">
+                <tr>
+                  <th className="p-4">Mã đơn</th>
+                  <th>Khách hàng</th>
+                  <th>Ngày đặt</th>
+                  <th>Tổng tiền</th>
+                  <th>Thanh toán</th>
+                  <th>Trạng thái</th>
+                  <th>Cập nhật</th>
                 </tr>
-              );
-            })}
-          </tbody>
+              </thead>
 
-        </table>
+              <tbody>
+                {orders.map((order) => {
+                  const id = order.id || order._id;
+                  const currentStatus = normalizeStatus(order.status);
+                  const paymentStatus = normalizeStatus(order.paymentStatus);
+                  const availableOptions = (statusOptionsByCurrent[currentStatus] || [])
+                    .filter((option) => !(option.value === 'cancelled' && paymentStatus === 'paid'));
 
-        {orders.length === 0 && (
-          <div className="p-6 text-gray-400 text-center">
-            Không có đơn hàng
+                  return (
+                    <tr key={id} className="border-t hover:bg-red-50">
+                      <td className="p-4 font-medium text-gray-800">{order.code || id}</td>
+
+                      <td className="text-gray-700">
+                        <p>{order.customer?.name || order.customerName || 'Khách hàng'}</p>
+                        {(order.customer?.email || order.customerEmail) && (
+                          <p className="text-xs text-gray-500">
+                            {order.customer?.email || order.customerEmail}
+                          </p>
+                        )}
+                      </td>
+
+                      <td className="text-gray-600">{formatDate(order.createdAt)}</td>
+
+                      <td className="font-semibold text-red-600">{formatCurrency(order.total)}</td>
+
+                      <td>
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
+                          {PAYMENT_STATUS_LABELS[paymentStatus] || order.paymentStatus}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span className="rounded-full bg-red-100 px-3 py-1 text-sm text-red-700">
+                          {ORDER_STATUS_LABELS[currentStatus] || order.status}
+                        </span>
+                      </td>
+
+                      <td>
+                        <select
+                          value=""
+                          onChange={(event) => handleChangeStatus(id, event.target.value)}
+                          disabled={updatingId === id || availableOptions.length === 0}
+                          className="rounded border border-red-300 px-3 py-2 disabled:cursor-not-allowed disabled:bg-gray-100"
+                        >
+                          <option value="" disabled>
+                            {availableOptions.length ? 'Chọn trạng thái' : 'Không thể chuyển tiếp'}
+                          </option>
+                          {availableOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+
+          {orders.length === 0 && (
+            <div className="p-6 text-center text-gray-400">Không có đơn hàng</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SummaryCard({ label, value }) {
+  return (
+    <div className="rounded border bg-white p-4 shadow-sm">
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className="text-2xl font-bold text-red-600">{value}</p>
     </div>
   );
 }

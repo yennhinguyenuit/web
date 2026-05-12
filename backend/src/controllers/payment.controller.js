@@ -321,6 +321,10 @@ const createPaymentIntent = async (req, res) => {
       return sendError(res, "Không tìm thấy đơn hàng", 404);
     }
 
+    if (["cancelled", "completed"].includes(String(order.status || "").toLowerCase())) {
+      return sendError(res, "Không thể tạo thanh toán cho đơn đã kết thúc", 400);
+    }
+
     if (!order.paymentMethod?.isEnabled) {
       return sendError(res, "Phương thức thanh toán hiện không khả dụng", 400);
     }
@@ -455,7 +459,8 @@ const processIncomingBankTransfer = async (incoming) => {
       status: "pending",
       transferContent: { not: null },
       order: {
-        paymentStatus: { not: "paid" },
+        status: { not: "cancelled" },
+        paymentStatus: { notIn: ["paid", "cancelled", "refunded"] },
       },
     },
     include: {
@@ -487,6 +492,10 @@ const processIncomingBankTransfer = async (incoming) => {
 
     if (!currentTransaction) {
       return null;
+    }
+
+    if (currentTransaction.order.status === "cancelled") {
+      return currentTransaction;
     }
 
     if (currentTransaction.status === "paid" || currentTransaction.order.paymentStatus === "paid") {
@@ -578,6 +587,10 @@ const processIncomingPayOSPayment = async (data) => {
 
   if (!transaction) {
     return null;
+  }
+
+  if (transaction.order.status === "cancelled") {
+    return transaction;
   }
 
   if (transaction.status === "paid" || transaction.order.paymentStatus === "paid") {

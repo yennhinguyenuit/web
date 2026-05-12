@@ -1,32 +1,22 @@
-import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function OrderSuccess() {
   const navigate = useNavigate();
   const { state, search } = useLocation();
-
-  // 🔥 LẤY DATA từ 2 nguồn (state + URL)
   const params = new URLSearchParams(search);
 
   const orderId = state?.orderId || params.get('orderId');
   const orderCode = state?.orderCode || params.get('code');
 
-  // ❌ KHÔNG redirect ngay nữa → để fallback UI
-  useEffect(() => {
-    if (!orderId) {
-      console.warn('❌ Không có orderId');
-    }
-  }, [orderId]);
-
-  // ❌ Nếu không có data → show message (KHÔNG redirect)
   if (!orderId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="bg-white p-10 rounded shadow text-center">
-          <h2 className="text-xl font-bold mb-3">Không tìm thấy đơn hàng</h2>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="bg-white p-10 text-center shadow">
+          <h2 className="mb-3 text-xl font-bold">Không tìm thấy đơn hàng</h2>
           <button
+            type="button"
             onClick={() => navigate('/orders')}
-            className="bg-red-600 text-white px-6 py-2 rounded"
+            className="rounded bg-red-600 px-6 py-2 text-white"
           >
             Xem đơn hàng của tôi
           </button>
@@ -36,62 +26,52 @@ export default function OrderSuccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white p-10 rounded shadow text-center max-w-lg w-full">
-
-        {/* ICON */}
-        <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center bg-green-100 rounded-full">
-          <span className="text-green-600 text-4xl">✓</span>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-lg bg-white p-10 text-center shadow">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
+          <span className="text-4xl text-green-600">✓</span>
         </div>
 
-        {/* TITLE */}
-        <h1 className="text-2xl font-bold mb-3">
-          Đặt hàng thành công!
-        </h1>
+        <h1 className="mb-3 text-2xl font-bold">Đặt hàng thành công!</h1>
 
-        <p className="text-gray-600 mb-2">
-          Cảm ơn bạn đã mua hàng.
-        </p>
+        <p className="mb-2 text-gray-600">Cảm ơn bạn đã mua hàng.</p>
 
         <p className="mb-4">
           Mã đơn hàng của bạn là{' '}
-          <span className="font-semibold text-red-600">
-            #{orderCode || orderId}
-          </span>
+          <span className="font-semibold text-red-600">#{orderCode || orderId}</span>
         </p>
 
-        <p className="text-gray-500 mb-6">
+        <p className="mb-6 text-gray-500">
           Chúng tôi sẽ liên hệ và xác nhận đơn hàng sớm nhất.
         </p>
 
-        {/* BUTTONS */}
         <div className="flex flex-col gap-3">
-
-          {/* 👉 XEM ĐƠN */}
           <button
+            type="button"
             onClick={() => navigate(`/orders/${orderId}`)}
-            className="bg-red-600 text-white px-6 py-3 rounded font-semibold"
+            className="rounded bg-red-600 px-6 py-3 font-semibold text-white"
           >
             Xem đơn hàng
           </button>
 
-          <div className="flex gap-3 justify-center">
+          <div className="flex justify-center gap-3">
             <button
+              type="button"
               onClick={() => navigate('/products')}
-              className="bg-black text-white px-6 py-2 rounded"
+              className="rounded bg-black px-6 py-2 text-white"
             >
               Tiếp tục mua sắm
             </button>
 
             <button
+              type="button"
               onClick={() => navigate('/')}
-              className="border px-6 py-2 rounded"
+              className="rounded border px-6 py-2"
             >
               Về trang chủ
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
