@@ -47,10 +47,7 @@ export default function PaymentResultPage() {
     };
 
     loadStatus();
-
-    if (orderId) {
-      intervalId = setInterval(loadStatus, 5000);
-    }
+    if (orderId) intervalId = setInterval(loadStatus, 5000);
 
     return () => {
       ignore = true;
@@ -63,35 +60,67 @@ export default function PaymentResultPage() {
   const isPaid = paymentStatus === 'paid';
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-10">
-      <h1 className="text-3xl font-bold">Kết quả thanh toán</h1>
-      {error ? <p className="text-red-600">{error}</p> : null}
+    <div className="min-h-screen bg-zinc-50 px-4 py-10">
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-lg border border-zinc-200 bg-white p-8 text-center shadow-sm">
+          <div className={`mx-auto grid h-20 w-20 place-items-center rounded-full border text-3xl font-black ${
+            isPaid ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-zinc-300 bg-zinc-100 text-zinc-700'
+          }`}>
+            {isPaid ? '✓' : '…'}
+          </div>
 
-      {status ? (
-        <div className="space-y-2 bg-white p-6 shadow">
-          <p><strong>Mã đơn:</strong> {status.orderCode}</p>
-          <p><strong>Trạng thái:</strong> {PAYMENT_STATUS_LABELS[paymentStatus] || status.paymentStatus}</p>
-          <p><strong>Phương thức:</strong> {status.paymentMethod?.name}</p>
-        </div>
-      ) : (
-        !error ? <p>Đang kiểm tra trạng thái...</p> : null
-      )}
+          <p className="mt-6 text-sm font-black uppercase tracking-[0.22em] text-zinc-500">Thanh toán</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-zinc-950">
+            {isPaid ? 'Thanh toán thành công' : 'Đang kiểm tra thanh toán'}
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-zinc-600">
+            Hệ thống sẽ tự cập nhật trạng thái mỗi vài giây. Bạn có thể mở lại cổng thanh toán hoặc xem chi tiết đơn hàng.
+          </p>
 
-      {status ? (
-        <div className="flex flex-wrap gap-3">
-          {checkoutUrl && !isPaid ? (
-            <a href={checkoutUrl} className="rounded bg-red-600 px-4 py-2 text-white">
-              Mở lại trang PayOS
-            </a>
+          {error ? (
+            <div className="mt-6 rounded-md border border-zinc-300 bg-zinc-100 p-4 text-sm font-medium text-zinc-700">
+              {error}
+            </div>
           ) : null}
-          {orderId ? (
-            <Link className="rounded border px-4 py-2" to={`/orders/${orderId}`}>
-              Xem chi tiết đơn hàng
-            </Link>
+
+          {status ? (
+            <div className="mt-6 grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-left sm:grid-cols-3">
+              <Info label="Mã đơn" value={status.orderCode || 'Chưa có'} />
+              <Info label="Trạng thái" value={PAYMENT_STATUS_LABELS[paymentStatus] || status.paymentStatus} />
+              <Info label="Phương thức" value={status.paymentMethod?.name || 'Chưa có'} />
+            </div>
+          ) : (
+            !error ? <p className="mt-6 animate-pulse text-sm text-zinc-500">Đang tải trạng thái...</p> : null
+          )}
+
+          {status ? (
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {checkoutUrl && !isPaid ? (
+                <a href={checkoutUrl} className="rounded-md bg-zinc-950 px-5 py-3 text-sm font-bold text-white hover:bg-zinc-800">
+                  Mở lại trang PayOS
+                </a>
+              ) : null}
+              {orderId ? (
+                <Link className="rounded-md border border-zinc-300 px-5 py-3 text-sm font-bold text-zinc-950 hover:bg-zinc-100" to={`/orders/${orderId}`}>
+                  Xem chi tiết đơn hàng
+                </Link>
+              ) : null}
+              <Link className="rounded-md border border-zinc-300 px-5 py-3 text-sm font-bold text-zinc-950 hover:bg-zinc-100" to="/shop">
+                Tiếp tục mua sắm
+              </Link>
+            </div>
           ) : null}
-          <Link className="rounded border px-4 py-2" to="/shop">Tiếp tục mua sắm</Link>
         </div>
-      ) : null}
+      </div>
+    </div>
+  );
+}
+
+function Info({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-zinc-500">{label}</p>
+      <p className="mt-1 font-bold text-zinc-950">{value}</p>
     </div>
   );
 }

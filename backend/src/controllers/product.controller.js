@@ -75,6 +75,7 @@ const getProducts = async (req, res) => {
 
     const where = {
       isActive: true,
+      isDeleted: false,
     };
 
     if (search) {
@@ -166,6 +167,7 @@ const getProductDetail = async (req, res) => {
       where: {
         id,
         isActive: true,
+        isDeleted: false,
       },
       include: {
         category: true,

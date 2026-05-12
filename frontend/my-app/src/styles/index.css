@@ -1,12 +1,92 @@
 @import './fonts.css';
 @import './theme.css';
 
-/* tailwind directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* custom thêm nếu cần */
-body {
-  font-family: 'Inter', sans-serif;
+/* Monochrome skin: keeps older pages/admin screens visually consistent. */
+[class*="bg-red-"],
+[class*="bg-rose-"],
+[class*="bg-pink-"],
+[class*="bg-purple-"],
+[class*="bg-orange-"],
+[class*="bg-yellow-"],
+[class*="bg-green-"],
+[class*="bg-blue-"],
+[class*="from-red-"],
+[class*="from-rose-"],
+[class*="from-pink-"],
+[class*="from-purple-"],
+[class*="from-orange-"],
+[class*="from-yellow-"],
+[class*="from-green-"],
+[class*="from-blue-"],
+[class*="to-red-"],
+[class*="to-rose-"],
+[class*="to-pink-"],
+[class*="to-purple-"],
+[class*="to-orange-"],
+[class*="to-yellow-"],
+[class*="to-green-"],
+[class*="to-blue-"] {
+  background-color: #111111 !important;
+  background-image: none !important;
+}
+
+[class*="bg-red-50"],
+[class*="bg-rose-50"],
+[class*="bg-pink-50"],
+[class*="bg-purple-50"],
+[class*="bg-orange-50"],
+[class*="bg-yellow-50"],
+[class*="bg-green-50"],
+[class*="bg-blue-50"],
+[class*="bg-red-100"],
+[class*="bg-rose-100"],
+[class*="bg-pink-100"],
+[class*="bg-purple-100"],
+[class*="bg-orange-100"],
+[class*="bg-yellow-100"],
+[class*="bg-green-100"],
+[class*="bg-blue-100"] {
+  background-color: #f4f4f5 !important;
+}
+
+[class*="text-red-"],
+[class*="text-rose-"],
+[class*="text-pink-"],
+[class*="text-purple-"],
+[class*="text-orange-"],
+[class*="text-yellow-"],
+[class*="text-green-"],
+[class*="text-blue-"] {
+  color: #111111 !important;
+}
+
+[class*="border-red-"],
+[class*="border-rose-"],
+[class*="border-pink-"],
+[class*="border-purple-"],
+[class*="border-orange-"],
+[class*="border-yellow-"],
+[class*="border-green-"],
+[class*="border-blue-"] {
+  border-color: #d4d4d8 !important;
+}
+
+[class*="ring-red-"],
+[class*="ring-rose-"],
+[class*="ring-pink-"],
+[class*="ring-purple-"],
+[class*="ring-orange-"],
+[class*="ring-yellow-"],
+[class*="ring-green-"],
+[class*="ring-blue-"] {
+  --tw-ring-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+.accent-red-600,
+.accent-red-500 {
+  accent-color: #111111 !important;
 }

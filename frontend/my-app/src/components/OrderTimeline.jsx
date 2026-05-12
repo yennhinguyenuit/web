@@ -10,57 +10,40 @@ export default function OrderTimeline({ status }) {
 
   if (status === 'cancelled') {
     return (
-      <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-        Đơn hàng đã hủy
+      <div className="rounded-lg border border-zinc-300 bg-zinc-100 p-4 text-sm font-medium text-zinc-700">
+        Đơn hàng đã hủy.
       </div>
     );
   }
 
   return (
-    <div className="mb-6 flex w-full items-center justify-between">
+    <div className="grid gap-4 sm:grid-cols-4">
       {steps.map((step, index) => {
         const isDone = currentIndex >= 0 && index < currentIndex;
         const isCurrent = index === currentIndex;
 
         return (
-          <div key={step.key} className="flex flex-1 items-center">
-            <div className="flex flex-col items-center">
-              <div
-                className={`
-                  flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all
-                  ${isCurrent
-                    ? 'scale-110 border-red-500 bg-red-500 text-white shadow-md'
-                    : isDone
-                      ? 'border-red-500 bg-white text-red-500'
-                      : 'border-gray-300 bg-white text-gray-300'}
-                `}
-              >
-                {index + 1}
-              </div>
-
-              <p
-                className={`mt-2 text-center text-xs ${
-                  isCurrent
-                    ? 'font-semibold text-red-600'
-                    : isDone
-                      ? 'text-red-500'
-                      : 'text-gray-400'
-                }`}
-              >
-                {step.label}
-              </p>
+          <div key={step.key} className="relative flex gap-3 sm:block">
+            <div
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border text-sm font-black ${
+                isCurrent
+                  ? 'border-zinc-950 bg-zinc-950 text-white'
+                  : isDone
+                    ? 'border-zinc-950 bg-white text-zinc-950'
+                    : 'border-zinc-300 bg-white text-zinc-400'
+              }`}
+            >
+              {index + 1}
             </div>
 
-            {index < steps.length - 1 && (
-              <div className="relative mx-2 h-[2px] flex-1">
-                <div className="absolute inset-0 bg-gray-300" />
-                <div
-                  className={`absolute inset-0 transition-all duration-500 ${
-                    index < currentIndex ? 'bg-red-500' : 'bg-transparent'
-                  }`}
-                />
-              </div>
-            )}
+            <div className="min-w-0 sm:mt-3">
+              <p className={`text-sm font-bold ${isCurrent || isDone ? 'text-zinc-950' : 'text-zinc-500'}`}>
+                {step.label}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {isCurrent ? 'Đang thực hiện' : isDone ? 'Đã xong' : 'Chờ cập nhật'}
+              </p>
+            </div>
           </div>
         );
       })}

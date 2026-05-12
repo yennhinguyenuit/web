@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { API_URL } from "../services/api";
+
+const fallbackProductImage = "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=900&q=80";
 
 export default function FlashSale() {
   const [sale, setSale] = useState(null);
@@ -7,19 +10,16 @@ export default function FlashSale() {
 
   useEffect(() => {
     fetch(`${API_URL}/flash-sale/active`)
-      .then(res => res.json())
-      .then(data => setSale(data.data));
+      .then((res) => res.json())
+      .then((data) => setSale(data.data))
+      .catch(() => setSale(null));
   }, []);
 
-  // COUNTDOWN
   useEffect(() => {
     if (!sale) return;
 
-    const interval = setInterval(() => {
-      const now = new Date();
-      const end = new Date(sale.end_date);
-      const diff = end - now;
-
+    const updateCountdown = () => {
+      const diff = new Date(sale.end_date) - new Date();
       if (diff <= 0) {
         setTimeLeft("00:00:00");
         return;
@@ -28,69 +28,55 @@ export default function FlashSale() {
       const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
       const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
       const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
-
       setTimeLeft(`${h}:${m}:${s}`);
-    }, 1000);
+    };
 
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
   }, [sale]);
 
-  if (!sale) return null;
+  if (!sale || !sale.flashSaleItems?.length) return null;
 
   return (
-    <div className="bg-red-600 text-white p-6 rounded-xl shadow-lg">
-
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">
-          🔥 FLASH SALE
-        </h2>
-
-        <span className="bg-black px-3 py-1 rounded text-sm">
-          ⏰ {timeLeft}
+    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-950 px-5 py-4 text-white">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-zinc-300">Ưu đãi đang diễn ra</p>
+          <h2 className="mt-1 text-2xl font-black">{sale.name || "Flash sale"}</h2>
+        </div>
+        <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-zinc-950">
+          Còn {timeLeft}
         </span>
       </div>
 
-      {/* PRODUCTS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {sale.flashSaleItems.map(item => {
-          const p = item.product;
-          const newPrice =
-            p.price * (1 - sale.discount_percent / 100);
+      <div className="grid grid-cols-2 gap-4 p-4 md:grid-cols-4">
+        {sale.flashSaleItems.slice(0, 4).map((item) => {
+          const product = item.product;
+          const price = Number(product.price || 0);
+          const discount = Number(sale.discount_percent || 0);
+          const salePrice = Math.floor(price * (1 - discount / 100));
 
           return (
-            <div
-              key={p.id}
-              className="bg-white text-black p-3 rounded relative hover:shadow-lg transition"
-            >
-
-              {/* BADGE */}
-              <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
-                -{sale.discount_percent}%
+            <Link key={product.id} to={`/products/${product.id}`} className="group rounded-lg border border-zinc-200 bg-white p-3 transition hover:-translate-y-1 hover:shadow-lg">
+              <div className="relative overflow-hidden rounded-md bg-zinc-100">
+                <span className="absolute left-2 top-2 z-10 rounded-full bg-zinc-950 px-2 py-1 text-xs font-black text-white">-{discount}%</span>
+                <img
+                  src={product.image || fallbackProductImage}
+                  alt={product.name}
+                  onError={(event) => {
+                    event.currentTarget.src = fallbackProductImage;
+                  }}
+                  className="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-105"
+                />
               </div>
-
-              <img
-                src={p.image}
-                className="h-32 w-full object-cover rounded"
-              />
-
-              <p className="text-sm mt-2 font-medium">
-                {p.name}
-              </p>
-
-              <p className="line-through text-gray-400 text-sm">
-                {p.price.toLocaleString()}đ
-              </p>
-
-              <p className="text-red-600 font-bold">
-                {Math.floor(newPrice).toLocaleString()}đ
-              </p>
-
-            </div>
+              <p className="mt-3 line-clamp-2 text-sm font-bold text-zinc-950">{product.name}</p>
+              <p className="mt-2 text-sm text-zinc-400 line-through">{price.toLocaleString("vi-VN")}đ</p>
+              <p className="text-lg font-black text-zinc-950">{salePrice.toLocaleString("vi-VN")}đ</p>
+            </Link>
           );
         })}
       </div>
-
     </div>
   );
 }
