@@ -634,6 +634,7 @@ exports.getAdminCustomers = async (req, res) => {
             id: true,
             code: true,
             total: true,
+            status: true,
             paymentStatus: true,
             createdAt: true,
           },
@@ -647,7 +648,12 @@ exports.getAdminCustomers = async (req, res) => {
     return res.json({
       success: true,
       data: customers.map((customer) => {
-        const paidOrders = customer.orders.filter((order) => order.paymentStatus === 'paid');
+        const paidOrders = customer.orders.filter((order) => {
+          const status = String(order.status || '').toLowerCase();
+          const paymentStatus = String(order.paymentStatus || '').toLowerCase();
+          return paymentStatus === 'paid' || status === 'completed' || status === 'delivered';
+        });
+
         return {
           id: customer.id,
           name: customer.name,

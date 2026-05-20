@@ -142,16 +142,11 @@ export default function CouponsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-
-      <h1 className="text-3xl font-bold text-red-600">
-        🎟 Quản lý Coupon
-      </h1>
-
+    <div className="space-y-6">
       {/* FORM */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow space-y-4"
+        className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm space-y-4"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
@@ -159,7 +154,7 @@ export default function CouponsPage() {
             value={form.code}
             onChange={handleChange}
             placeholder="Mã coupon (VD: SALE50)"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             required
           />
 
@@ -168,7 +163,7 @@ export default function CouponsPage() {
             value={form.name}
             onChange={handleChange}
             placeholder="Tên coupon"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             required
           />
 
@@ -177,14 +172,14 @@ export default function CouponsPage() {
             value={form.description}
             onChange={handleChange}
             placeholder="Mô tả (tùy chọn)"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
           />
 
           <select
             name="discountType"
             value={form.discountType}
             onChange={handleChange}
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
           >
             <option value="percent">Giảm giá theo %</option>
             <option value="fixed">Giảm giá cố định (đ)</option>
@@ -196,7 +191,7 @@ export default function CouponsPage() {
             value={form.discountValue}
             onChange={handleChange}
             placeholder="Giá trị giảm giá"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             required
             min="0"
           />
@@ -207,7 +202,7 @@ export default function CouponsPage() {
             value={form.minOrderValue}
             onChange={handleChange}
             placeholder="Giá trị đơn hàng tối thiểu"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             min="0"
           />
 
@@ -217,7 +212,7 @@ export default function CouponsPage() {
             value={form.maxDiscount}
             onChange={handleChange}
             placeholder="Giảm giá tối đa (khi %)"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             min="0"
           />
 
@@ -227,7 +222,7 @@ export default function CouponsPage() {
             value={form.usageLimit}
             onChange={handleChange}
             placeholder="Giới hạn sử dụng toàn bộ"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             min="0"
           />
 
@@ -237,7 +232,7 @@ export default function CouponsPage() {
             value={form.perUserLimit}
             onChange={handleChange}
             placeholder="Giới hạn / người"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
             min="0"
           />
 
@@ -247,7 +242,7 @@ export default function CouponsPage() {
             value={form.startAt}
             onChange={handleChange}
             placeholder="Ngày bắt đầu"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
           />
 
           <input
@@ -256,7 +251,7 @@ export default function CouponsPage() {
             value={form.endAt}
             onChange={handleChange}
             placeholder="Ngày kết thúc"
-            className="border p-2 rounded"
+            className="border border-neutral-300 p-2 rounded focus:border-neutral-950 focus:outline-none"
           />
 
           <div className="flex items-center gap-2">
@@ -273,34 +268,39 @@ export default function CouponsPage() {
 
         <button
           type="submit"
-          className="w-full bg-red-500 text-white py-2 rounded font-semibold hover:bg-red-600"
+          className="w-full bg-neutral-950 text-white py-2 rounded font-semibold hover:bg-neutral-800"
         >
-          ➕ Tạo Coupon
+          Tạo Coupon
         </button>
       </form>
 
       {/* LIST */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h2 className="font-bold mb-4 text-lg">📋 Danh sách Coupon</h2>
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
+        <div className="border-b border-neutral-200 bg-neutral-100 px-6 py-4">
+          <h2 className="font-bold text-lg text-neutral-950">Danh sách Coupon</h2>
+        </div>
 
         {loading ? (
-          <p>Đang tải...</p>
+          <p className="p-6 text-neutral-500">Đang tải...</p>
         ) : coupons.length === 0 ? (
-          <p className="text-gray-500">Không có dữ liệu</p>
+          <p className="p-6 text-neutral-500">Không có dữ liệu</p>
         ) : (
           coupons.map((c) => (
-            <div key={c.id} className="flex justify-between border-b py-2">
+            <div key={c.id} className="flex justify-between gap-4 border-b border-neutral-100 px-6 py-4 hover:bg-neutral-50">
               <div>
-                <b>{c.code}</b>
-                <p>Giảm {c.discount}%</p>
+                <b className="text-neutral-950">{c.code}</b>
+                <p className="text-sm text-neutral-600">Giảm {c.discount}%</p>
               </div>
 
-              <div>
+              <div className="text-sm text-neutral-600">
                 {new Date(c.startDate).toLocaleDateString("vi-VN")} →
                 {new Date(c.endDate).toLocaleDateString("vi-VN")}
               </div>
 
-              <button onClick={() => handleDelete(c.id)}>
+              <button
+                onClick={() => handleDelete(c.id)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+              >
                 Xóa
               </button>
             </div>

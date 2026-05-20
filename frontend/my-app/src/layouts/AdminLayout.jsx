@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LayoutDashboard, Package, ShoppingCart, TicketPercent, Users, Zap } from 'lucide-react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 
@@ -30,8 +31,8 @@ function AdminLayout() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-lg px-8 py-6 text-lg font-medium text-slate-700">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="bg-neutral-950 rounded-lg shadow-lg px-8 py-6 text-lg font-medium text-white">
           Đang kiểm tra quyền truy cập...
         </div>
       </div>
@@ -41,8 +42,8 @@ function AdminLayout() {
   const navClass = ({ isActive }) =>
     `flex items-center gap-3 rounded-xl px-4 py-3 transition ${
       isActive
-        ? 'bg-red-600 text-white shadow'
-        : 'text-slate-700 hover:bg-red-50 hover:text-red-600'
+        ? 'bg-neutral-950 text-white shadow'
+        : 'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950'
     }`;
 
   const pageTitle =
@@ -53,7 +54,7 @@ function AdminLayout() {
       : location.pathname.includes('/admin/orders')
       ? 'Quản lý đơn hàng'
       : location.pathname.includes('/admin/users') || location.pathname.includes('/admin/customers')
-      ? 'Users'
+      ? 'Quản lý Users'
       : location.pathname.includes('/admin/coupons')
       ? 'Mã giảm giá'
       : location.pathname.includes('/admin/flash-sale')
@@ -61,60 +62,59 @@ function AdminLayout() {
       : 'Admin Panel';
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-neutral-50">
       <div className="flex min-h-screen">
 
         {/* SIDEBAR */}
-        <aside className="w-72 bg-white border-r border-slate-200 shadow-sm p-6 flex flex-col">
+        <aside className="w-72 bg-neutral-50 border-r border-neutral-200 shadow-sm p-6 flex flex-col">
           <div className="mb-8">
-            <p className="text-sm text-slate-500">Trang quản trị</p>
             <h1 className="text-2xl font-bold text-red-600">LUXE ADMIN</h1>
           </div>
 
           <nav className="space-y-2">
             <NavLink to="/admin" end className={navClass}>
-              <span>📊</span>
+              <LayoutDashboard className="h-5 w-5" />
               <span>Dashboard</span>
             </NavLink>
 
             <NavLink to="/admin/products" className={navClass}>
-              <span>🛍️</span>
+              <Package className="h-5 w-5" />
               <span>Sản phẩm</span>
             </NavLink>
 
             <NavLink to="/admin/orders" className={navClass}>
-              <span>📦</span>
+              <ShoppingCart className="h-5 w-5" />
               <span>Đơn hàng</span>
             </NavLink>
 
             <NavLink to="/admin/users" className={navClass}>
-              <span>👤</span>
-              <span>Users</span>
+              <Users className="h-5 w-5" />
+              <span>Quản lý Users</span>
             </NavLink>
 
             {/* NEW */}
             <NavLink to="/admin/coupons" className={navClass}>
-              <span>🏷️</span>
-              <span>Coupons</span>
+              <TicketPercent className="h-5 w-5" />
+              <span>Mã giảm giá</span>
             </NavLink>
 
             <NavLink to="/admin/flash-sale" className={navClass}>
-              <span>⚡</span>
+              <Zap className="h-5 w-5" />
               <span>Flash Sale</span>
             </NavLink>
           </nav>
 
           {/* USER */}
-          <div className="mt-auto pt-6 border-t border-slate-200">
-            <div className="mb-4 rounded-2xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">Đang đăng nhập</p>
-              <p className="font-semibold text-slate-800">{user.name}</p>
-              <p className="text-sm text-slate-500">{user.email}</p>
+          <div className="mt-auto pt-6 border-t border-neutral-200">
+            <div className="mb-4 rounded-lg border border-neutral-200 bg-white p-4">
+              <p className="text-sm text-neutral-500">Đang đăng nhập</p>
+              <p className="font-semibold text-neutral-950">{user.name}</p>
+              <p className="text-sm text-neutral-500">{user.email}</p>
             </div>
 
             <button
               onClick={logout}
-              className="w-full rounded-xl bg-red-600 px-4 py-3 text-white font-medium hover:bg-red-700 transition"
+              className="w-full rounded-xl bg-neutral-950 px-4 py-3 text-white font-medium transition hover:bg-neutral-800"
             >
               Logout
             </button>
@@ -122,21 +122,18 @@ function AdminLayout() {
         </aside>
 
         {/* MAIN */}
-        <main className="flex-1">
-          <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
+        <main className="flex-1 bg-neutral-50">
+          <header className="bg-neutral-950 border-b border-neutral-900 px-8 py-6 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">
+              <h2 className="text-3xl font-bold text-white">
                 {pageTitle}
               </h2>
-              <p className="text-sm text-slate-500">
-                Quản lý hệ thống cửa hàng
-              </p>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/')}
-                className="rounded-xl border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-white/20 bg-white px-4 py-2 text-neutral-950 transition hover:bg-neutral-100"
               >
                 Về trang chủ
               </button>

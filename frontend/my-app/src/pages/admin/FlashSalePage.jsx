@@ -156,15 +156,12 @@ export default function FlashSalePage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-
-      <h1 className="text-2xl font-bold text-red-600">⚡ Quản lý Flash Sale</h1>
-
+    <div className="space-y-6">
       {/* FORM */}
-      <div className="bg-white p-4 rounded-xl shadow space-y-3">
+      <div className="bg-white p-6 rounded-lg border border-neutral-200 shadow-sm space-y-3">
         <input
           placeholder="Tên flash sale"
-          className="border p-2 w-full rounded"
+          className="border border-neutral-300 p-2 w-full rounded focus:border-neutral-950 focus:outline-none"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
@@ -172,7 +169,7 @@ export default function FlashSalePage() {
         <input
           placeholder="% giảm giá (VD: 30)"
           type="number"
-          className="border p-2 w-full rounded"
+          className="border border-neutral-300 p-2 w-full rounded focus:border-neutral-950 focus:outline-none"
           value={form.discount_percent}
           onChange={(e) => setForm({ ...form, discount_percent: e.target.value })}
           min="0"
@@ -180,35 +177,35 @@ export default function FlashSalePage() {
         />
 
         <div>
-          <label className="text-sm font-semibold">Ngày bắt đầu</label>
+          <label className="text-sm font-semibold text-neutral-700">Ngày bắt đầu</label>
           <input
             type="datetime-local"
-            className="border p-2 w-full rounded mt-1"
+            className="border border-neutral-300 p-2 w-full rounded mt-1 focus:border-neutral-950 focus:outline-none"
             value={form.start_date}
             onChange={(e) => setForm({ ...form, start_date: e.target.value })}
           />
         </div>
 
         <div>
-          <label className="text-sm font-semibold">Ngày kết thúc</label>
+          <label className="text-sm font-semibold text-neutral-700">Ngày kết thúc</label>
           <input
             type="datetime-local"
-            className="border p-2 w-full rounded mt-1"
+            className="border border-neutral-300 p-2 w-full rounded mt-1 focus:border-neutral-950 focus:outline-none"
             value={form.end_date}
             onChange={(e) => setForm({ ...form, end_date: e.target.value })}
           />
         </div>
 
         <div>
-          <p className="font-semibold mb-2">Chọn sản phẩm ({form.productIds.length} đã chọn)</p>
-          <div className="max-h-48 overflow-auto border rounded p-2 space-y-1 bg-gray-50">
+          <p className="font-semibold mb-2 text-neutral-950">Chọn sản phẩm ({form.productIds.length} đã chọn)</p>
+          <div className="max-h-48 overflow-auto border border-neutral-200 rounded p-2 space-y-1 bg-neutral-50">
             {productsLoading ? (
-              <p className="text-gray-500">Đang tải sản phẩm...</p>
+              <p className="text-neutral-500">Đang tải sản phẩm...</p>
             ) : products.length === 0 ? (
-              <p className="text-gray-500">Không có sản phẩm</p>
+              <p className="text-neutral-500">Không có sản phẩm</p>
             ) : (
               products.map((p) => (
-                <label key={p.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                <label key={p.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded">
                   <input
                     type="checkbox"
                     checked={form.productIds.includes(p.id)}
@@ -225,51 +222,53 @@ export default function FlashSalePage() {
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="w-full bg-red-500 text-white px-4 py-2 rounded font-semibold hover:bg-red-600 disabled:opacity-50"
+          className="w-full bg-neutral-950 text-white px-4 py-2 rounded font-semibold hover:bg-neutral-800 disabled:opacity-50"
         >
-          {creating ? "Đang tạo..." : "✨ Tạo Flash Sale"}
+          {creating ? "Đang tạo..." : "Tạo Flash Sale"}
         </button>
       </div>
 
       {/* LIST */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <h2 className="font-bold mb-4 text-lg">⚡ Flash Sale Đang Chạy</h2>
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
+        <div className="border-b border-neutral-200 bg-neutral-100 px-6 py-4">
+          <h2 className="font-bold text-lg text-neutral-950">Flash Sale Đang Chạy</h2>
+        </div>
 
         {loading ? (
-          <p className="text-gray-500">Đang tải...</p>
+          <p className="p-6 text-neutral-500">Đang tải...</p>
         ) : sales.length === 0 ? (
-          <p className="text-gray-500">Không có flash sale nào</p>
+          <p className="p-6 text-neutral-500">Không có flash sale nào</p>
         ) : (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid gap-4 p-6 md:grid-cols-2">
             {sales.map((s) => (
-              <div key={s.id} className="border rounded-lg p-4 bg-gradient-to-br from-red-50 to-orange-50">
-                <h2 className="font-bold text-lg text-red-600">{s.name}</h2>
+              <div key={s.id} className="border border-neutral-200 rounded-lg p-4 bg-white shadow-sm">
+                <h2 className="font-bold text-lg text-neutral-950">{s.name}</h2>
 
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-neutral-600 mt-2">
                   <strong>Trang thai:</strong> {FLASH_SALE_STATUS_LABELS[s.status] || s.status || "Khong ro"}
                 </p>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   <strong>Giảm:</strong> {s.discount_percent}%
                 </p>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   <strong>Bắt đầu:</strong> {new Date(s.start_date).toLocaleString("vi-VN")}
                 </p>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   <strong>Kết thúc:</strong> {new Date(s.end_date).toLocaleString("vi-VN")}
                 </p>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-neutral-600">
                   <strong>Sản phẩm:</strong> {s.products?.length || 0} sản phẩm
                 </p>
 
                 <button
                   onClick={() => handleDelete(s.id)}
-                  className="mt-3 w-full bg-red-500 text-white px-3 py-2 rounded font-semibold hover:bg-red-600"
+                  className="mt-3 w-full bg-red-600 text-white px-3 py-2 rounded font-semibold hover:bg-red-700"
                 >
-                  🗑 Xóa Flash Sale
+                  Xóa Flash Sale
                 </button>
               </div>
             ))}

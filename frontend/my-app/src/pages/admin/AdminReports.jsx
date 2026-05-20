@@ -37,53 +37,42 @@ export default function AdminReports() {
   }, [loadData]);
 
   return (
-    <div className="p-6 space-y-8">
-
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-800">📊 Báo cáo</h1>
-        <p className="text-slate-500">📌 Tổng quan doanh thu & đơn hàng</p>
-      </div>
-
+    <div className="space-y-8">
       {/* SUMMARY */}
       <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6">
 
-  <div className="rounded-2xl p-5 text-white shadow bg-red-500">
-    <p className="flex items-center gap-2 text-lg font-semibold">
-      <span className="text-2xl">💰</span>
+  <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+    <p className="flex items-center gap-2 text-lg font-semibold text-neutral-600">
       Tổng doanh thu
     </p>
-    <h2 className="text-2xl font-bold mt-2">
+    <h2 className="text-2xl font-bold mt-2 text-neutral-950">
       {summary.totalRevenue.toLocaleString()}đ
     </h2>
   </div>
 
-  <div className="rounded-2xl p-5 text-white shadow bg-blue-500">
-    <p className="flex items-center gap-2 text-lg font-semibold">
-      <span className="text-2xl">📦</span>
+  <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+    <p className="flex items-center gap-2 text-lg font-semibold text-neutral-600">
       Tổng đơn hàng
     </p>
-    <h2 className="text-2xl font-bold mt-2">
+    <h2 className="text-2xl font-bold mt-2 text-neutral-950">
       {summary.totalOrders}
     </h2>
   </div>
 
-  <div className="rounded-2xl p-5 text-white shadow bg-purple-500">
-    <p className="flex items-center gap-2 text-lg font-semibold">
-      <span className="text-2xl">💳</span>
+  <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+    <p className="flex items-center gap-2 text-lg font-semibold text-neutral-600">
       Đã thanh toán
     </p>
-    <h2 className="text-2xl font-bold mt-2">
+    <h2 className="text-2xl font-bold mt-2 text-neutral-950">
       {summary.paidOrders}
     </h2>
   </div>
 
-  <div className="rounded-2xl p-5 text-white shadow bg-green-500">
-    <p className="flex items-center gap-2 text-lg font-semibold">
-      <span className="text-2xl">✅</span>
+  <div className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
+    <p className="flex items-center gap-2 text-lg font-semibold text-neutral-600">
       Đơn hoàn thành
     </p>
-    <h2 className="text-2xl font-bold mt-2">
+    <h2 className="text-2xl font-bold mt-2 text-neutral-950">
       {summary.deliveredOrders}
     </h2>
   </div>
@@ -91,35 +80,39 @@ export default function AdminReports() {
 </div>
 
       {/* DOANH THU */}
-      <div className="bg-white p-6 rounded-2xl shadow">
-        <h2 className="text-lg font-semibold mb-4 text-slate-700">
-          📈 Doanh thu
-        </h2>
+      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-200 bg-neutral-100 px-6 py-4">
+          <h2 className="text-lg font-semibold text-neutral-950">
+            Doanh thu
+          </h2>
+        </div>
 
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={300} className="p-6">
           <LineChart data={revenue}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
             <Tooltip />
-            <Line dataKey="total" stroke="#ef4444" strokeWidth={3} />
+            <Line dataKey="total" stroke="#111827" strokeWidth={3} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       {/* ĐƠN HÀNG */}
-      <div className="bg-white p-6 rounded-2xl shadow">
-        <h2 className="text-lg font-semibold mb-4 text-slate-700">
-          📦 Tổng đơn hàng
-        </h2>
+      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-200 bg-neutral-100 px-6 py-4">
+          <h2 className="text-lg font-semibold text-neutral-950">
+            Tổng đơn hàng
+          </h2>
+        </div>
 
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={300} className="p-6">
           <BarChart data={orders}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="total" fill="#3b82f6" />
+            <Bar dataKey="total" fill="#111827" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
