@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { accountAPI } from '../services/api';
+import FlashSale from '../components/FlashSale';
 
 const EMPTY_ADDRESS = {
   name: '',
@@ -95,92 +96,86 @@ function AccountPage() {
   };
 
   if (loading) {
-    return <div className="p-10 text-center">Đang tải tài khoản...</div>;
+    return <div className="p-10 text-center text-zinc-600">Đang tải tài khoản...</div>;
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-10 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-3">Tài khoản của bạn</h1>
-        {profile ? (
-          <div className="bg-white rounded shadow p-4 space-y-1">
-            <p><strong>Email:</strong> {profile.email}</p>
-            <p><strong>Vai trò:</strong> {profile.role}</p>
-            <p><strong>Ngày tạo:</strong> {new Date(profile.createdAt).toLocaleString()}</p>
+    <div className="min-h-screen bg-zinc-50">
+      <section className="bg-zinc-950 text-white">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-zinc-300">Tài khoản</p>
+            <h1 className="mt-3 text-4xl font-black tracking-tight">Xin chào, {profile?.name || 'bạn'}</h1>
+            <p className="mt-4 max-w-2xl text-zinc-300">
+              Quản lý hồ sơ, địa chỉ giao hàng và theo dõi các ưu đãi đang mở cho tài khoản của bạn.
+            </p>
           </div>
-        ) : null}
-      </div>
-
-      <form onSubmit={handleProfileSubmit} className="bg-white rounded shadow p-6 space-y-4">
-        <h2 className="text-2xl font-semibold">Cập nhật hồ sơ</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          <input
-            value={profileForm.name}
-            onChange={(event) => setProfileForm((current) => ({ ...current, name: event.target.value }))}
-            className="border rounded px-4 py-3"
-            placeholder="Họ tên"
-          />
-          <input
-            value={profileForm.phone}
-            onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))}
-            className="border rounded px-4 py-3"
-            placeholder="Số điện thoại"
-          />
+          {profile && (
+            <div className="rounded-lg border border-white/10 bg-white/10 p-5">
+              <p className="text-sm text-zinc-300">Email</p>
+              <p className="mt-1 font-bold">{profile.email}</p>
+              <p className="mt-4 text-sm text-zinc-300">Vai trò</p>
+              <p className="mt-1 font-bold">{profile.role}</p>
+            </div>
+          )}
         </div>
-        <input
-          value={profileForm.defaultAddress}
-          onChange={(event) => setProfileForm((current) => ({ ...current, defaultAddress: event.target.value }))}
-          className="border rounded px-4 py-3 w-full"
-          placeholder="Địa chỉ mặc định dạng text"
-        />
-        <button disabled={savingProfile} className="px-5 py-2 bg-red-600 text-white rounded disabled:opacity-60">
-          {savingProfile ? 'Đang lưu...' : 'Lưu hồ sơ'}
-        </button>
-      </form>
+      </section>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded shadow p-6 space-y-4">
-          <h2 className="text-2xl font-semibold">Địa chỉ đã lưu</h2>
-          <div className="space-y-4">
-            {addresses.map((address) => (
-              <div key={address.id} className="border rounded p-4 space-y-2">
-                <p className="font-semibold">{address.name} {address.isDefault ? '(Mặc định)' : ''}</p>
-                <p>{address.phone}</p>
-                <p>{address.address}, {address.ward}, {address.district}, {address.city}</p>
-                <div className="flex gap-3">
-                  {!address.isDefault ? (
-                    <button onClick={() => setDefaultAddress(address.id)} className="text-red-600 font-medium">
-                      Đặt mặc định
-                    </button>
-                  ) : null}
-                  <button onClick={() => removeAddress(address.id)} className="text-gray-600 font-medium">
-                    Xóa
-                  </button>
-                </div>
-              </div>
-            ))}
-            {addresses.length === 0 ? <p>Chưa có địa chỉ nào.</p> : null}
-          </div>
-        </div>
+      <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+        <FlashSale />
 
-        <form onSubmit={handleAddressSubmit} className="bg-white rounded shadow p-6 space-y-4">
-          <h2 className="text-2xl font-semibold">Thêm địa chỉ mới</h2>
-          <input value={addressForm.name} onChange={(event) => setAddressForm((current) => ({ ...current, name: event.target.value }))} className="border rounded px-4 py-3 w-full" placeholder="Tên người nhận" required />
-          <input value={addressForm.phone} onChange={(event) => setAddressForm((current) => ({ ...current, phone: event.target.value }))} className="border rounded px-4 py-3 w-full" placeholder="Số điện thoại" required />
-          <input value={addressForm.address} onChange={(event) => setAddressForm((current) => ({ ...current, address: event.target.value }))} className="border rounded px-4 py-3 w-full" placeholder="Số nhà, đường" required />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input value={addressForm.ward} onChange={(event) => setAddressForm((current) => ({ ...current, ward: event.target.value }))} className="border rounded px-4 py-3" placeholder="Phường/Xã" required />
-            <input value={addressForm.district} onChange={(event) => setAddressForm((current) => ({ ...current, district: event.target.value }))} className="border rounded px-4 py-3" placeholder="Quận/Huyện" required />
-            <input value={addressForm.city} onChange={(event) => setAddressForm((current) => ({ ...current, city: event.target.value }))} className="border rounded px-4 py-3" placeholder="Tỉnh/Thành phố" required />
+        <form onSubmit={handleProfileSubmit} className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-black text-zinc-950">Cập nhật hồ sơ</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <input value={profileForm.name} onChange={(event) => setProfileForm((current) => ({ ...current, name: event.target.value }))} className="rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Họ tên" />
+            <input value={profileForm.phone} onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))} className="rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Số điện thoại" />
           </div>
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" checked={addressForm.isDefault} onChange={(event) => setAddressForm((current) => ({ ...current, isDefault: event.target.checked }))} />
-            Đặt làm mặc định
-          </label>
-          <button disabled={savingAddress} className="px-5 py-2 bg-red-600 text-white rounded disabled:opacity-60">
-            {savingAddress ? 'Đang thêm...' : 'Thêm địa chỉ'}
+          <input value={profileForm.defaultAddress} onChange={(event) => setProfileForm((current) => ({ ...current, defaultAddress: event.target.value }))} className="mt-4 w-full rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Địa chỉ mặc định dạng text" />
+          <button disabled={savingProfile} className="mt-5 rounded-md bg-zinc-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-zinc-800 disabled:opacity-60">
+            {savingProfile ? 'Đang lưu...' : 'Lưu hồ sơ'}
           </button>
         </form>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-black text-zinc-950">Địa chỉ đã lưu</h2>
+            <div className="mt-5 space-y-4">
+              {addresses.map((address) => (
+                <div key={address.id} className="rounded-lg border border-zinc-200 p-4">
+                  <p className="font-black text-zinc-950">{address.name} {address.isDefault ? '(Mặc định)' : ''}</p>
+                  <p className="mt-1 text-zinc-600">{address.phone}</p>
+                  <p className="mt-1 text-zinc-600">{address.address}, {address.ward}, {address.district}, {address.city}</p>
+                  <div className="mt-3 flex gap-4 text-sm font-bold">
+                    {!address.isDefault && <button onClick={() => setDefaultAddress(address.id)} className="text-zinc-950">Đặt mặc định</button>}
+                    <button onClick={() => removeAddress(address.id)} className="text-zinc-500 hover:text-zinc-950">Xóa</button>
+                  </div>
+                </div>
+              ))}
+              {addresses.length === 0 && <p className="text-zinc-500">Chưa có địa chỉ nào.</p>}
+            </div>
+          </div>
+
+          <form onSubmit={handleAddressSubmit} className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-black text-zinc-950">Thêm địa chỉ mới</h2>
+            <div className="mt-5 space-y-4">
+              <input value={addressForm.name} onChange={(event) => setAddressForm((current) => ({ ...current, name: event.target.value }))} className="w-full rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Tên người nhận" required />
+              <input value={addressForm.phone} onChange={(event) => setAddressForm((current) => ({ ...current, phone: event.target.value }))} className="w-full rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Số điện thoại" required />
+              <input value={addressForm.address} onChange={(event) => setAddressForm((current) => ({ ...current, address: event.target.value }))} className="w-full rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Số nhà, đường" required />
+              <div className="grid gap-4 md:grid-cols-3">
+                <input value={addressForm.ward} onChange={(event) => setAddressForm((current) => ({ ...current, ward: event.target.value }))} className="rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Phường/Xã" required />
+                <input value={addressForm.district} onChange={(event) => setAddressForm((current) => ({ ...current, district: event.target.value }))} className="rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Quận/Huyện" required />
+                <input value={addressForm.city} onChange={(event) => setAddressForm((current) => ({ ...current, city: event.target.value }))} className="rounded-md border border-zinc-300 px-4 py-3 outline-none focus:border-zinc-950 focus:ring-4 focus:ring-zinc-200" placeholder="Tỉnh/Thành phố" required />
+              </div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-zinc-600">
+                <input type="checkbox" checked={addressForm.isDefault} onChange={(event) => setAddressForm((current) => ({ ...current, isDefault: event.target.checked }))} />
+                Đặt làm mặc định
+              </label>
+              <button disabled={savingAddress} className="rounded-md bg-zinc-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-zinc-800 disabled:opacity-60">
+                {savingAddress ? 'Đang thêm...' : 'Thêm địa chỉ'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

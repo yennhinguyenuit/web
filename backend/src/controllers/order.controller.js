@@ -24,6 +24,37 @@ const generateOrderCode = () => (
   `ORD-${Date.now()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
 );
 
+const resolveProductImage = (product, fallback = null) => (
+  product?.image ||
+  product?.images?.[0]?.imageUrl ||
+  fallback ||
+  null
+);
+
+const formatOrderItem = (item) => ({
+  id: item.id,
+  productId: item.productId,
+  productName: item.productName,
+  productImage: item.productImage || resolveProductImage(item.product),
+  unitPrice: Number(item.unitPrice),
+  price: Number(item.unitPrice),
+  quantity: item.quantity,
+  color: item.color || null,
+  size: item.size || null,
+  product: item.product
+    ? {
+        id: item.product.id,
+        name: item.product.name || item.productName,
+        image: resolveProductImage(item.product, item.productImage),
+      }
+    : {
+        id: item.productId,
+        name: item.productName,
+        image: item.productImage,
+      },
+  subTotal: Number(item.unitPrice) * item.quantity,
+});
+
 const formatOrderListItem = (order) => {
   return {
     id: order.id,
@@ -47,6 +78,7 @@ const formatOrderListItem = (order) => {
     latestTransaction: order.transactions?.[0]
       ? mapPaymentTransaction(order.transactions[0])
       : null,
+    items: (order.items || []).map(formatOrderItem),
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
   };
@@ -128,29 +160,7 @@ const formatOrderDetail = (order) => {
           ward: order.address.ward,
         }
       : null,
-    items: order.items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      productName: item.productName,
-      productImage: item.productImage,
-      unitPrice: Number(item.unitPrice),
-      price: Number(item.unitPrice),
-      quantity: item.quantity,
-      color: item.color || null,
-      size: item.size || null,
-      product: item.product
-        ? {
-            id: item.product.id,
-            name: item.product.name || item.productName,
-            image: item.product.image || item.productImage,
-          }
-        : {
-            id: item.productId,
-            name: item.productName,
-            image: item.productImage,
-          },
-      subTotal: Number(item.unitPrice) * item.quantity,
-    })),
+    items: order.items.map(formatOrderItem),
     payment: buildOrderPaymentInfo(order),
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
@@ -339,6 +349,13 @@ const createOrder = async (req, res) => {
           isActive: true,
           isDeleted: false,
         },
+        include: {
+          images: {
+            orderBy: {
+              sortOrder: "asc",
+            },
+          },
+        },
       });
 
       if (products.length !== productIds.length) {
@@ -440,7 +457,7 @@ const createOrder = async (req, res) => {
             orderId: createdOrder.id,
             productId: item.productId,
             productName: p.name,
-            productImage: p.image,
+            productImage: resolveProductImage(p),
             unitPrice: p.price,
             quantity: item.quantity,
             color: item.color || null,
@@ -547,7 +564,25 @@ const getMyOrders = async (req, res) => {
     const orders = await prisma.order.findMany({
       where: { userId: req.user.id },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+                images: {
+                  orderBy: {
+                    sortOrder: "asc",
+                  },
+                  select: {
+                    imageUrl: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         paymentMethod: true,
         shippingMethod: true,
         transactions: {
@@ -583,10 +618,18 @@ const getOrderDetail = async (req, res) => {
               select: {
                 id: true,
                 name: true,
-                image: true,
+              image: true,
+              images: {
+                orderBy: {
+                  sortOrder: "asc",
+                },
+                select: {
+                  imageUrl: true,
+                },
               },
             },
           },
+        },
         },
         transactions: {
           orderBy: { createdAt: "desc" },
@@ -660,6 +703,14 @@ const cancelOrder = async (req, res) => {
                   id: true,
                   name: true,
                   image: true,
+                  images: {
+                    orderBy: {
+                      sortOrder: "asc",
+                    },
+                    select: {
+                      imageUrl: true,
+                    },
+                  },
                 },
               },
             },
@@ -741,6 +792,14 @@ const updateOrderStatus = async (req, res) => {
                   id: true,
                   name: true,
                   image: true,
+                  images: {
+                    orderBy: {
+                      sortOrder: "asc",
+                    },
+                    select: {
+                      imageUrl: true,
+                    },
+                  },
                 },
               },
             },
