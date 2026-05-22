@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Services\OrderMailService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\View\View;
+
+class OrderController extends Controller
+{
+    public function index(): View
+    {
+        return view('admin.orders.index', [
+            'orders' => Order::with('user')->latest()->paginate(15),
+        ]);
+    }
+
+    public function show(Order $order): View
+    {
+        return view('admin.orders.show', ['order' => $order->load('items.product', 'user', 'coupon', 'productCoupon', 'shippingCoupon', 'paymentTransactions')]);
+    }
+
+    public function updateStatus(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['pending', 'confirmed', 'shipping', 'completed', 'cancelled'])],
+            'payment_status' => ['nullable', Rule::in(['unpaid', 'pending', 'paid', 'failed', 'refunded'])],
+        ]);
+        $oldStatus = $order->status;
+        $oldPaymentStatus = $order->payment_status;
+
+        DB::transaction(function () use ($order, $data) {
+            $wasCancelled = $order->status === 'cancelled';
+            $nextStatus = $data['status'];
+
+            if ($nextStatus === 'cancelled' && ! $wasCancelled) {
+                foreach ($order->items as $item) {
+                    $item->product()->increment('stock', $item->quantity);
+                }
+            }
+
+            $nextPaymentStatus = $data['payment_status'] ?? ($nextStatus === 'completed' ? 'paid' : $order->payment_status);
+
+            if ($order->payment_method === 'cod' && $nextStatus === 'completed') {
+                $nextPaymentStatus = 'paid';
+            }
+
+            $order->update([
+                'status' => $nextStatus,
+                'payment_status' => $nextPaymentStatus,
+            ]);
+        });
+
+        $order->refresh();
+        if ($order->status !== $oldStatus || $order->payment_status !== $oldPaymentStatus) {
+            $orderMailService->sendStatusUpdated($order, $oldStatus, $oldPaymentStatus);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Đã cập nhật trạng thái đơn hàng.',
+            'order' => $order,
+        ]);
+    }
+
+    public function reviewCancel(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse
+    {
+        $data = $request->validate([
+            'decision' => ['required', Rule::in(['approved', 'rejected'])],
+        ]);
+
+        if ($order->cancel_status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Đơn hàng không có yêu cầu hủy đang chờ duyệt.',
+            ], 422);
+        }
+
+        $oldStatus = $order->status;
+        $oldPaymentStatus = $order->payment_status;
+
+        DB::transaction(function () use ($order, $data) {
+            $order->loadMissing('items.product');
+
+            if ($data['decision'] === 'approved') {
+                foreach ($order->items as $item) {
+                    $item->product()->increment('stock', $item->quantity);
+                }
+
+                $order->update([
+                    'status' => 'cancelled',
+                    'cancel_status' => 'approved',
+                    'cancel_reviewed_at' => now(),
+                    'payment_status' => $order->payment_status === 'paid' ? 'refunded' : $order->payment_status,
+                ]);
+
+                return;
+            }
+
+            $order->update([
+                'cancel_status' => 'rejected',
+                'cancel_reviewed_at' => now(),
+            ]);
+        });
+
+        $order->refresh();
+        if ($order->status !== $oldStatus || $order->payment_status !== $oldPaymentStatus) {
+            $orderMailService->sendStatusUpdated($order, $oldStatus, $oldPaymentStatus);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $data['decision'] === 'approved'
+                ? 'Đã duyệt hủy đơn hàng.'
+                : 'Đã từ chối yêu cầu hủy. Đơn hàng sẽ tiếp tục được giao.',
+            'order' => $order,
+        ]);
+    }
+}
+

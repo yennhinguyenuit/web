@@ -40,6 +40,27 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
+vendor/
+composer.phar
+composer-setup.php
+composer-write-test.tmp
+/storage/*.key
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*.php
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/vendor/
+backend/storage/*.key
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/bootstrap/cache/*.php
+laravel_skeleton_tmp/
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

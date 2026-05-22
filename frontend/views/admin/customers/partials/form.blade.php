@@ -1,0 +1,8 @@
+<div class="col-md-6"><label class="form-label">Họ tên</label><input class="form-control" name="name" value="{{ old('name', $customer->name ?? '') }}" required></div>
+<div class="col-md-6"><label class="form-label">Email</label><input class="form-control" type="email" name="email" value="{{ old('email', $customer->email ?? '') }}" required></div>
+<div class="col-md-6"><label class="form-label">Mật khẩu</label><input class="form-control" type="password" name="password" @empty($customer) required @endempty></div>
+<div class="col-md-6"><label class="form-label">Nhập lại mật khẩu</label><input class="form-control" type="password" name="password_confirmation" @empty($customer) required @endempty></div>
+<div class="col-md-6"><label class="form-label">Điện thoại</label><input class="form-control" name="phone" value="{{ old('phone', $customer->phone ?? '') }}"></div>
+<div class="col-md-3"><label class="form-label">Trạng thái</label><select class="form-select" name="status"><option value="active" @selected(old('status', $customer->status ?? 'active') === 'active')>active</option><option value="locked" @selected(old('status', $customer->status ?? '') === 'locked')>locked</option></select></div>
+<div class="col-md-3"><label class="form-label">Hạng khách hàng</label><select class="form-select" name="customer_tier">@foreach(['bronze','silver','gold','vip'] as $tier)<option value="{{ $tier }}" @selected(old('customer_tier', $customer->customer_tier ?? 'bronze') === $tier)>{{ $tier }}</option>@endforeach</select></div>
+<div class="col-12"><label class="form-label">Địa chỉ</label><textarea class="form-control" name="address">{{ old('address', $customer->address ?? '') }}</textarea></div>
