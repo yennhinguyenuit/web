@@ -1,0 +1,17 @@
+.git
+.gitignore
+
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+backend/vendor
+backend/composer.phar
+
+backend/storage/logs/*
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/bootstrap/cache/*.php
+
+node_modules
