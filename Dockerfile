@@ -2,8 +2,8 @@ FROM php:8.3-apache
 
 RUN apt-get update && apt-get install -y \
     git unzip curl \
-    libpq-dev libzip-dev libicu-dev libonig-dev \
-    && docker-php-ext-install pdo_pgsql pgsql mbstring zip intl bcmath opcache \
+    libpq-dev libzip-dev libicu-dev libonig-dev libxml2-dev \
+    && docker-php-ext-install pdo_pgsql pgsql mbstring zip intl bcmath opcache dom \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,7 +14,7 @@ WORKDIR /var/www
 COPY . /var/www
 
 RUN cd /var/www/backend \
-    && composer install --no-dev --optimize-autoloader --no-interaction \
+    && composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
