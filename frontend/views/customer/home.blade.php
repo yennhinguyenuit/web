@@ -1,8 +1,21 @@
 @extends('layouts.frontend')
 @section('title', 'Luxe Store')
 @section('content')
-<section class="luxe-hero">
-    <img src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1800&q=85" alt="Bộ sưu tập thời trang Luxe Store">
+@php
+    $heroSlides = ($heroProducts ?? collect())
+        ->filter(fn ($product) => filled($product->image))
+        ->values();
+    $fallbackHero = 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1800&q=85';
+@endphp
+
+<section class="luxe-hero" data-hero-slideshow data-hero-interval="5000">
+    <div class="luxe-hero-media">
+        @forelse($heroSlides as $heroProduct)
+            <img class="luxe-hero-slide {{ $loop->first ? 'is-active' : '' }}" src="{{ $heroProduct->image }}" alt="{{ $heroProduct->name }}" loading="{{ $loop->first ? 'eager' : 'lazy' }}">
+        @empty
+            <img class="luxe-hero-slide is-active" src="{{ $fallbackHero }}" alt="Bộ sưu tập thời trang Luxe Store">
+        @endforelse
+    </div>
     <div class="luxe-container luxe-hero-inner">
         <div>
             <p class="luxe-eyebrow">Luxe Store Collection</p>
@@ -81,4 +94,8 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script src="/assets/js/home-hero.js?v=2026052301"></script>
+@endpush
 
