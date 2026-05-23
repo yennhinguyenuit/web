@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Luxe Admin')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="{{ asset('assets/css/admin.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=20260523">
 </head>
 <body class="luxe-body">
 <div class="admin-shell">
