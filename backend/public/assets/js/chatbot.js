@@ -17,7 +17,7 @@ if ((chatbotToggle || chatbotForm) && (!chatbotToggle || !chatbotCard || !chatbo
 }
 
 function escapeHtml(value) {
-    return String(value)
+    return String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -45,18 +45,61 @@ function setChatbotOpen(isOpen) {
     if (!chatbotCard || !chatbotToggle) return;
 
     chatbotCard.hidden = !isOpen;
+    chatbotToggle.hidden = isOpen;
     chatbotToggle.setAttribute('aria-expanded', String(isOpen));
-    chatbotToggle.textContent = isOpen ? 'Thu gọn chatbot' : 'Mở chatbot';
+    chatbotToggle.setAttribute('aria-label', isOpen ? 'Trợ lý mua sắm đang mở' : 'Mở trợ lý mua sắm');
     setChatbotPreference(isOpen);
 }
 
-function appendChat(sender, message) {
+function productCardsHtml(products = []) {
+    if (!Array.isArray(products) || products.length === 0) return '';
+
+    const cards = products.map((product) => `
+        <a class="chatbot-product-card" href="${escapeHtml(product.url || '#')}">
+            <img src="${escapeHtml(product.image || 'https://placehold.co/120x150?text=Luxe')}" alt="${escapeHtml(product.name || 'Sản phẩm')}" loading="lazy">
+            <span>
+                <strong>${escapeHtml(product.name || 'Sản phẩm')}</strong>
+                <small>${escapeHtml(product.category || 'Luxe Store')}</small>
+                <b>${escapeHtml(product.price_label || '')}</b>
+                <em>${escapeHtml(product.size_note || '')}</em>
+            </span>
+        </a>
+    `).join('');
+
+    return `<div class="chatbot-product-list">${cards}</div>`;
+}
+
+function couponCardsHtml(coupons = []) {
+    if (!Array.isArray(coupons) || coupons.length === 0) return '';
+
+    const cards = coupons.map((coupon) => `
+        <div class="chatbot-coupon-card">
+            <strong>${escapeHtml(coupon.code || '')}</strong>
+            <span>${escapeHtml(coupon.discount_label || '')}</span>
+            <small>${escapeHtml(coupon.min_order_label || '')}</small>
+            ${coupon.max_discount_label ? `<small>${escapeHtml(coupon.max_discount_label)}</small>` : ''}
+            <em>${escapeHtml(coupon.end_at_label || '')}</em>
+        </div>
+    `).join('');
+
+    return `<div class="chatbot-coupon-list">${cards}</div>`;
+}
+
+function appendChat(sender, message, payload = {}) {
     if (!chatbotLog) return;
 
     const messageClass = sender === 'Bạn' ? 'chat-message-user' : 'chat-message-assistant';
+    const productsHtml = productCardsHtml(payload.products);
+    const couponsHtml = couponCardsHtml(payload.coupons);
+
     chatbotLog.insertAdjacentHTML(
         'beforeend',
-        `<div class="chat-message ${messageClass}"><strong>${escapeHtml(sender)}</strong><span>${escapeHtml(message)}</span></div>`
+        `<div class="chat-message ${messageClass}">
+            <strong>${escapeHtml(sender)}</strong>
+            <span>${escapeHtml(message)}</span>
+            ${productsHtml}
+            ${couponsHtml}
+        </div>`
     );
     chatbotLog.scrollTop = chatbotLog.scrollHeight;
 }
@@ -107,8 +150,16 @@ async function sendChatbotMessage(message) {
         });
         const payload = await readChatbotJson(response);
 
-        appendChat('Trợ lý', response.ok ? payload.reply : chatbotErrorMessage(payload));
-    } catch {
+        if (response.ok) {
+            appendChat('Trợ lý', payload.reply, {
+                products: payload.products || [],
+                coupons: payload.coupons || [],
+            });
+        } else {
+            appendChat('Trợ lý', chatbotErrorMessage(payload));
+        }
+    } catch (error) {
+        console.error('Chatbot request failed.', error);
         appendChat('Trợ lý', 'Không kết nối được tới chatbot. Popup vẫn hoạt động, vui lòng thử lại sau.');
     } finally {
         if (submitButton) submitButton.disabled = false;
@@ -116,7 +167,7 @@ async function sendChatbotMessage(message) {
 }
 
 chatbotToggle?.addEventListener('click', () => {
-    setChatbotOpen(chatbotCard?.hidden ?? true);
+    setChatbotOpen(true);
 });
 
 chatbotClose?.addEventListener('click', () => {

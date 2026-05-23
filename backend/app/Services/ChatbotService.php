@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Coupon;
 use App\Models\OrderItem;
 use App\Models\Product;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -11,22 +13,46 @@ class ChatbotService
 {
     public function reply(string $message): string
     {
-        if (config('services.gemini.enabled') && config('services.gemini.key')) {
-            $geminiReply = $this->replyWithGemini($message);
+        return $this->respond($message)['reply'];
+    }
 
-            if ($geminiReply !== null) {
-                return $geminiReply;
+    public function respond(string $message): array
+    {
+        $fit = $this->fitFromMessage($message);
+        $productIntent = $this->hasProductIntent($message) || $fit !== null;
+        $couponIntent = $this->hasCouponIntent($message) || $productIntent;
+
+        $products = $productIntent
+            ? $this->recommendedProducts($message, $fit)->map(fn (Product $product) => $this->formatProduct($product, $fit))->values()->all()
+            : [];
+
+        $coupons = $couponIntent
+            ? $this->activeCoupons()->map(fn (Coupon $coupon) => $this->formatCoupon($coupon))->values()->all()
+            : [];
+
+        $reply = null;
+        $provider = 'local';
+
+        if (config('services.gemini.enabled') && config('services.gemini.key')) {
+            $reply = $this->replyWithGemini($message, $products, $coupons, $fit);
+            if ($reply !== null) {
+                $provider = 'gemini';
             }
         }
 
-        return $this->replyWithLocalRules($message);
+        return [
+            'reply' => $reply ?: $this->replyWithLocalRules($message, $products, $coupons, $fit),
+            'products' => $products,
+            'coupons' => $coupons,
+            'provider' => $provider,
+        ];
     }
 
-    private function replyWithGemini(string $message): ?string
+    private function replyWithGemini(string $message, array $products, array $coupons, ?array $fit): ?string
     {
         $key = config('services.gemini.key');
         $model = config('services.gemini.model', 'gemini-1.5-flash');
-        $context = $this->buildStoreContext();
+        $context = $this->buildStoreContext($products, $coupons, $fit);
 
         try {
             $response = Http::timeout(10)->post(
@@ -34,7 +60,7 @@ class ChatbotService
                 [
                     'contents' => [[
                         'parts' => [[
-                            'text' => "Bạn là trợ lý mua sắm của Luxe Store, website bán hàng thời trang Laravel. Trả lời ngắn gọn bằng tiếng Việt, ưu tiên hướng dẫn về sản phẩm, coupon, checkout, thanh toán online và trạng thái đơn hàng. Không nhắc tên nhà cung cấp dịch vụ trong câu trả lời.\n\n{$context}\n\nKhách hỏi: {$message}",
+                            'text' => "Bạn là trợ lý mua sắm của Luxe Store. Trả lời ngắn gọn bằng tiếng Việt, ưu tiên dữ liệu sản phẩm, giá, size, coupon, checkout, thanh toán và trạng thái đơn hàng. Không tự bịa sản phẩm hoặc mã giảm giá ngoài dữ liệu bên dưới.\n\n{$context}\n\nKhách hỏi: {$message}",
                         ]],
                     ]],
                 ]
@@ -50,7 +76,7 @@ class ChatbotService
         }
     }
 
-    private function replyWithLocalRules(string $message): string
+    private function replyWithLocalRules(string $message, array $products, array $coupons, ?array $fit): string
     {
         $text = mb_strtolower($message);
 
@@ -58,48 +84,238 @@ class ChatbotService
             return 'Bạn vào mục Đơn hàng để xem trạng thái pending, confirmed, shipping, completed hoặc cancelled. Nếu cần hỏi người bán, mở trang Liên hệ để chat trực tiếp.';
         }
 
-        if (str_contains($text, 'giảm giá') || str_contains($text, 'coupon') || str_contains($text, 'mã')) {
-            return 'Bạn nhập mã giảm giá ở trang checkout. Hệ thống sẽ kiểm tra mã còn active không, còn hạn không, đạt giá trị tối thiểu không và còn lượt sử dụng không.';
+        if ($this->hasCouponIntent($message) && $coupons !== []) {
+            return 'Các mã giảm giá đang dùng được nằm bên dưới. Khi checkout, bạn nhập đúng mã và hệ thống sẽ tự kiểm tra điều kiện đơn tối thiểu, thời hạn và lượt dùng.';
         }
 
-        if (str_contains($text, 'thanh toán') || str_contains($text, 'online')) {
+        if (str_contains($text, 'thanh toán') || str_contains($text, 'online') || str_contains($text, 'payos')) {
             return 'Website hỗ trợ COD, chuyển khoản ngân hàng, PayOS và thanh toán online. Với thanh toán online, hệ thống tạo giao dịch thanh toán và cập nhật trạng thái sau khi xác nhận.';
         }
 
-        if (str_contains($text, 'bán chạy') || str_contains($text, 'gợi ý') || str_contains($text, 'sản phẩm') || str_contains($text, 'mua')) {
-            $products = $this->recommendedProducts();
+        if ($products !== []) {
+            $sizeText = $fit ? ' Size gợi ý hiện tại là '.$fit['size'].', bạn vẫn nên đối chiếu form dáng và số đo cá nhân trước khi đặt.' : '';
 
-            return $products !== ''
-                ? 'Gợi ý nhanh cho bạn: '.$products.'. Bạn có thể bấm vào Cửa hàng để lọc theo danh mục và khoảng giá.'
-                : 'Hiện chưa có sản phẩm khả dụng. Bạn quay lại sau hoặc liên hệ người bán để được tư vấn.';
+            return 'Mình gợi ý vài sản phẩm đang hiển thị trong shop bên dưới, có kèm hình ảnh, giá và link xem chi tiết.'.$sizeText;
         }
 
-        return 'Mình là trợ lý mua sắm của Luxe Store. Mình có thể gợi ý sản phẩm, hướng dẫn áp mã giảm giá, checkout, thanh toán online và kiểm tra trạng thái đơn hàng.';
+        if ($this->hasCouponIntent($message)) {
+            return 'Hiện chưa tìm thấy mã giảm giá còn hiệu lực. Bạn có thể kiểm tra lại ở trang checkout hoặc hỏi shop để được hỗ trợ thêm.';
+        }
+
+        return 'Mình có thể gợi ý sản phẩm theo nhu cầu, size, cân nặng, ngân sách, mã giảm giá, checkout, thanh toán online và trạng thái đơn hàng.';
     }
 
-    private function buildStoreContext(): string
+    private function recommendedProducts(string $message, ?array $fit): Collection
     {
-        return 'Sản phẩm gợi ý: '.$this->recommendedProducts()
-            .'. Coupon thường dùng: WELCOME10, FREESHIP50, SALE20, FLASH15. Trạng thái đơn hàng gồm pending, confirmed, shipping, completed, cancelled.';
-    }
+        $keywords = $this->productKeywords($message);
+        $query = Product::with('category')
+            ->where('is_active', true)
+            ->where('stock', '>', 0);
 
-    private function recommendedProducts(): string
-    {
-        $topProductNames = OrderItem::selectRaw('product_name, SUM(quantity) as sold_quantity')
-            ->groupBy('product_name')
+        if ($keywords !== []) {
+            $query->where(function ($query) use ($keywords) {
+                foreach ($keywords as $keyword) {
+                    $like = '%'.mb_strtolower($keyword).'%';
+                    $query->orWhereRaw('LOWER(name) LIKE ?', [$like])
+                        ->orWhereRaw('LOWER(description) LIKE ?', [$like])
+                        ->orWhereHas('category', fn ($category) => $category->whereRaw('LOWER(name) LIKE ?', [$like]));
+                }
+            });
+        }
+
+        $products = $query->orderByDesc('sold')->latest()->take(4)->get();
+
+        if ($products->isNotEmpty()) {
+            return $products;
+        }
+
+        $topProductIds = OrderItem::selectRaw('product_id, SUM(quantity) as sold_quantity')
+            ->groupBy('product_id')
             ->orderByDesc('sold_quantity')
-            ->limit(3)
-            ->pluck('product_name')
+            ->limit(4)
+            ->pluck('product_id')
             ->filter()
             ->values();
 
-        if ($topProductNames->isEmpty()) {
-            $topProductNames = Product::where('is_active', true)
-                ->latest()
-                ->take(3)
-                ->pluck('name');
+        if ($topProductIds->isNotEmpty()) {
+            $order = array_flip($topProductIds->all());
+
+            return Product::with('category')
+                ->where('is_active', true)
+                ->where('stock', '>', 0)
+                ->whereIn('id', $topProductIds)
+                ->get()
+                ->sortBy(fn (Product $product) => $order[$product->id] ?? 999)
+                ->values();
         }
 
-        return $topProductNames->implode(', ');
+        return Product::with('category')
+            ->where('is_active', true)
+            ->where('stock', '>', 0)
+            ->latest()
+            ->take(4)
+            ->get();
+    }
+
+    private function activeCoupons(): Collection
+    {
+        $now = now();
+
+        return Coupon::where('is_active', true)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('start_at')->orWhere('start_at', '<=', $now);
+            })
+            ->where(function ($query) use ($now) {
+                $query->whereNull('end_at')->orWhere('end_at', '>=', $now);
+            })
+            ->where(function ($query) {
+                $query->whereNull('usage_limit')->orWhereColumn('used_count', '<', 'usage_limit');
+            })
+            ->orderByDesc('discount_value')
+            ->take(3)
+            ->get();
+    }
+
+    private function productKeywords(string $message): array
+    {
+        $text = mb_strtolower($message);
+        $keywords = [];
+
+        $groups = [
+            ['terms' => ['áo', 'polo', 'sơ mi', 'blazer', 'khoác', 'cardigan'], 'keywords' => ['áo', 'polo', 'sơ mi', 'blazer', 'khoác', 'cardigan']],
+            ['terms' => ['quần', 'jean', 'kaki', 'culottes'], 'keywords' => ['quần', 'jean', 'kaki', 'culottes']],
+            ['terms' => ['váy', 'đầm', 'chân váy'], 'keywords' => ['váy', 'đầm', 'chân váy']],
+            ['terms' => ['giày', 'sneaker', 'loafer', 'sandal', 'boot'], 'keywords' => ['giày', 'sneaker', 'loafer', 'sandal', 'boot']],
+            ['terms' => ['túi', 'mũ', 'khăn', 'thắt lưng', 'phụ kiện'], 'keywords' => ['túi', 'mũ', 'khăn', 'thắt lưng', 'phụ kiện']],
+            ['terms' => ['nam'], 'keywords' => ['nam']],
+            ['terms' => ['nữ'], 'keywords' => ['nữ']],
+        ];
+
+        foreach ($groups as $group) {
+            foreach ($group['terms'] as $term) {
+                if (str_contains($text, $term)) {
+                    $keywords = array_merge($keywords, $group['keywords']);
+                    break;
+                }
+            }
+        }
+
+        return array_values(array_unique($keywords));
+    }
+
+    private function hasProductIntent(string $message): bool
+    {
+        $text = mb_strtolower($message);
+
+        foreach (['sản phẩm', 'gợi ý', 'mua', 'chọn', 'size', 'cỡ', 'cân', 'kg', 'áo', 'quần', 'váy', 'đầm', 'giày', 'túi', 'phụ kiện'] as $keyword) {
+            if (str_contains($text, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function hasCouponIntent(string $message): bool
+    {
+        $text = mb_strtolower($message);
+
+        foreach (['giảm giá', 'coupon', 'voucher', 'mã', 'khuyến mãi', 'freeship', 'sale'] as $keyword) {
+            if (str_contains($text, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function fitFromMessage(string $message): ?array
+    {
+        $weight = null;
+        $height = null;
+
+        if (preg_match('/(\d{2,3})\s*(kg|kí|ký|kilogram|cân)/iu', $message, $matches)) {
+            $weight = (int) $matches[1];
+        }
+
+        if (preg_match('/(\d{2,3})\s*cm/iu', $message, $matches)) {
+            $height = (int) $matches[1];
+        }
+
+        if ($weight === null && $height === null) {
+            return null;
+        }
+
+        $size = match (true) {
+            $weight !== null && $weight <= 45 => 'XS',
+            $weight !== null && $weight <= 52 => 'S',
+            $weight !== null && $weight <= 60 => 'M',
+            $weight !== null && $weight <= 68 => 'L',
+            $weight !== null && $weight <= 78 => 'XL',
+            $weight !== null => 'XXL',
+            $height !== null && $height < 155 => 'S',
+            $height !== null && $height < 165 => 'M',
+            $height !== null && $height < 175 => 'L',
+            default => 'XL',
+        };
+
+        return [
+            'height' => $height,
+            'weight' => $weight,
+            'size' => $size,
+            'note' => 'Gợi ý theo thông tin khách cung cấp, cần đối chiếu thêm form dáng sản phẩm.',
+        ];
+    }
+
+    private function formatProduct(Product $product, ?array $fit): array
+    {
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'category' => $product->category?->name ?: 'Sản phẩm',
+            'price' => (float) $product->price,
+            'price_label' => number_format((float) $product->price).'đ',
+            'original_price_label' => $product->original_price ? number_format((float) $product->original_price).'đ' : null,
+            'image' => $product->image ?: 'https://placehold.co/240x300?text=Luxe',
+            'url' => '/products/'.$product->slug,
+            'stock' => $product->stock,
+            'size' => $fit['size'] ?? null,
+            'size_note' => $fit ? 'Size gợi ý: '.$fit['size'].' theo cân nặng/chiều cao bạn gửi.' : 'Có đủ size XS đến XXL, xem chi tiết để chọn size.',
+        ];
+    }
+
+    private function formatCoupon(Coupon $coupon): array
+    {
+        $isPercent = $coupon->discount_type === 'percent';
+        $isShipping = str_contains(strtoupper($coupon->code), 'SHIP');
+
+        return [
+            'code' => $coupon->code,
+            'name' => $coupon->name,
+            'type' => $isShipping ? 'shipping' : 'product',
+            'discount_label' => $isPercent
+                ? '-'.rtrim(rtrim(number_format((float) $coupon->discount_value, 2), '0'), '.').'%'
+                : '-'.number_format((float) $coupon->discount_value).'đ',
+            'min_order_label' => 'Đơn tối thiểu '.number_format((float) $coupon->min_order_value).'đ',
+            'max_discount_label' => $coupon->max_discount ? 'Giảm tối đa '.number_format((float) $coupon->max_discount).'đ' : null,
+            'end_at_label' => $coupon->end_at ? 'HSD '.$coupon->end_at->format('d/m/Y') : 'Không giới hạn ngày hết hạn',
+        ];
+    }
+
+    private function buildStoreContext(array $products, array $coupons, ?array $fit): string
+    {
+        $productLines = collect($products)
+            ->map(fn (array $product) => "- {$product['name']} | {$product['price_label']} | {$product['category']} | {$product['size_note']}")
+            ->implode("\n");
+
+        $couponLines = collect($coupons)
+            ->map(fn (array $coupon) => "- {$coupon['code']} | {$coupon['discount_label']} | {$coupon['min_order_label']} | {$coupon['end_at_label']}")
+            ->implode("\n");
+
+        $fitLine = $fit
+            ? "Khách cung cấp: chiều cao ".($fit['height'] ?: 'chưa rõ')."cm, cân nặng ".($fit['weight'] ?: 'chưa rõ')."kg, size gợi ý {$fit['size']}."
+            : 'Khách chưa cung cấp đủ chiều cao/cân nặng.';
+
+        return "Sản phẩm phù hợp:\n".($productLines ?: '- Chưa có sản phẩm phù hợp trong truy vấn.')."\n\nMã giảm giá còn hiệu lực:\n".($couponLines ?: '- Chưa có mã phù hợp.')."\n\n{$fitLine}";
     }
 }

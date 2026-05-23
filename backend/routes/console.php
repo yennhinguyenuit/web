@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\FlashSaleScheduleService;
 use App\Support\ProductImageCatalog;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -233,3 +234,11 @@ Artisan::command('app:refresh-product-images', function () {
 
     $this->info("Da cap nhat anh cho {$updatedImages} san pham va tao/cap nhat san pham test 1K.");
 })->purpose('Cap nhat anh san pham va san pham test 1K');
+
+Artisan::command('app:sync-flash-sales {--year= : Nam bat dau dong bo} {--years-ahead=1 : So nam tao them}', function () {
+    $year = (int) ($this->option('year') ?: now()->year);
+    $yearsAhead = max(0, (int) $this->option('years-ahead'));
+    $created = app(FlashSaleScheduleService::class)->sync($year, $yearsAhead);
+
+    $this->info("Da dong bo flash sale tu dong. Tao moi {$created} chien dich.");
+})->purpose('Dong bo flash sale tu dong 1.1, 2.2, ..., 12.12 va Black Friday');

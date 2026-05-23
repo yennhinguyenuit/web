@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\FlashSale;
 use App\Models\Product;
+use App\Services\FlashSaleScheduleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,22 +13,25 @@ use Illuminate\View\View;
 
 class FlashSaleController extends Controller
 {
-    public function index(): View
+    public function index(FlashSaleScheduleService $flashSaleSchedule): View
     {
+        $newAutoCampaigns = $flashSaleSchedule->sync();
+
         return view('admin.flash-sales.index', [
             'flashSales' => FlashSale::with('products')->latest()->paginate(10),
             'products' => Product::where('is_active', true)->orderBy('name')->get(),
+            'newAutoCampaigns' => $newAutoCampaigns,
         ]);
     }
 
-    public function create(): View
+    public function create(FlashSaleScheduleService $flashSaleSchedule): View
     {
-        return $this->index();
+        return $this->index($flashSaleSchedule);
     }
 
-    public function edit(FlashSale $flashSale): View
+    public function edit(FlashSale $flashSale, FlashSaleScheduleService $flashSaleSchedule): View
     {
-        return $this->index();
+        return $this->index($flashSaleSchedule);
     }
 
     public function store(Request $request): RedirectResponse

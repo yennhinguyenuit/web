@@ -21,19 +21,19 @@ class ChatbotController extends Controller
             'message' => $data['message'],
         ]);
 
-        $reply = $chatbotService->reply($data['message']);
+        $response = $chatbotService->respond($data['message']);
 
         ChatMessage::create([
             'user_id' => Auth::id(),
             'sender' => 'bot',
-            'message' => $reply,
+            'message' => $response['reply'],
         ]);
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'reply' => $reply]);
+            return response()->json(['success' => true] + $response);
         }
 
-        return back()->with('success', $reply);
+        return back()->with('success', $response['reply']);
     }
 }
 

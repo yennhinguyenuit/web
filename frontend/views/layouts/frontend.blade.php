@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Luxe Store')</title>
+    <link rel="icon" type="image/png" href="/assets/images/logo-new.png?v=2026052306">
+    <link rel="apple-touch-icon" href="/assets/images/logo-new.png?v=2026052306">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/app.css?v=2026052302">
-<link rel="stylesheet" href="/assets/css/frontend.css?v=2026052302">
+    <link rel="stylesheet" href="/assets/css/app.css?v=2026052306">
+    <link rel="stylesheet" href="/assets/css/frontend.css?v=2026052306">
 </head>
 <body class="luxe-body">
 @php
@@ -154,26 +156,34 @@
 
 @auth
     <div id="chatbot-box" class="chatbot-box">
-        <button type="button" id="chatbot-toggle" class="chatbot-toggle" aria-expanded="false" aria-controls="chatbot-card">
-            Chatbot
+        <button type="button" id="chatbot-toggle" class="chatbot-toggle" aria-expanded="false" aria-controls="chatbot-card" aria-label="Mở trợ lý mua sắm">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 5.5A4.5 4.5 0 0 1 9.5 1h5A4.5 4.5 0 0 1 19 5.5v4A4.5 4.5 0 0 1 14.5 14H11l-4.2 3.2A1.1 1.1 0 0 1 5 16.3V14.2A4.5 4.5 0 0 1 1 9.8V5.5Z" />
+                <path d="M8 7h8M8 10h5" />
+            </svg>
         </button>
         <div id="chatbot-card" class="chatbot-card" hidden>
             <div class="chatbot-head">
                 <span>Trợ lý mua sắm</span>
-                <button type="button" class="chat-close-btn" id="chatbot-close" aria-label="Đóng chatbot">×</button>
+                <button type="button" class="chat-close-btn" id="chatbot-close" aria-label="Đóng chatbot">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                </button>
             </div>
             <div class="chatbot-body">
-                <p class="chatbot-subtitle">Hỏi nhanh về sản phẩm, coupon, thanh toán và đơn hàng.</p>
+                <p class="chatbot-subtitle">Hỏi mình về sản phẩm, size, mã giảm giá hoặc đơn hàng.</p>
+                <div id="chatbot-log" class="chatbot-log"></div>
                 <div class="chatbot-suggestions" aria-label="Câu hỏi gợi ý">
+                    <button type="button" data-chatbot-suggestion="Tôi cao 160cm nặng 50kg, gợi ý sản phẩm phù hợp">Gợi ý theo size</button>
                     <button type="button" data-chatbot-suggestion="Gợi ý sản phẩm bán chạy hôm nay">Sản phẩm bán chạy</button>
                     <button type="button" data-chatbot-suggestion="Tôi kiểm tra trạng thái đơn hàng ở đâu?">Trạng thái đơn hàng</button>
                     <button type="button" data-chatbot-suggestion="Có mã giảm giá nào dùng được không?">Mã giảm giá</button>
                     <button type="button" data-chatbot-suggestion="Thanh toán online hoạt động như thế nào?">Thanh toán online</button>
                 </div>
-                <div id="chatbot-log" class="chatbot-log"></div>
                 <form id="chatbot-form" class="chatbot-form" method="POST" action="{{ route('chatbot.send') }}">
                     @csrf
-                    <input id="chatbot-message" class="luxe-input" placeholder="Hỏi về sản phẩm, coupon, đơn hàng...">
+                    <input id="chatbot-message" class="luxe-input" placeholder="Hỏi sản phẩm, size, cân nặng, coupon...">
                     <button class="luxe-btn">Gửi</button>
                 </form>
             </div>
@@ -182,7 +192,7 @@
 @endauth
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/assets/js/chatbot.js?v=20260523"></script>
+<script src="/assets/js/chatbot.js?v=2026052305"></script>
 <script src="/assets/js/seller-chat.js?v=20260523"></script>
 @stack('scripts')
 </body>

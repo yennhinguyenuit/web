@@ -3,6 +3,13 @@
 @section('title', 'Flash Sale')
 
 @section('content')
+<div class="alert alert-info border-0 shadow-sm">
+    Flash sale tự động đã được đồng bộ cho các ngày 1.1, 2.2, 3.3 ... 12.12 và Black Friday. Hệ thống tạo sẵn chiến dịch cho năm hiện tại và năm sau; admin vẫn có thể tạo hoặc tắt chiến dịch thủ công như bình thường.
+    @if(($newAutoCampaigns ?? 0) > 0)
+        <strong>Vừa tạo mới {{ $newAutoCampaigns }} chiến dịch.</strong>
+    @endif
+</div>
+
 <div class="row g-4">
     <div class="col-lg-4">
         <div class="admin-card">
