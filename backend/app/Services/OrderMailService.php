@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class OrderMailService
@@ -42,6 +43,13 @@ class OrderMailService
                     ->subject($subject);
             });
         } catch (Throwable $exception) {
+            Log::warning('Order email could not be sent.', [
+                'order_id' => $order->id,
+                'order_code' => $order->order_code,
+                'view' => $view,
+                'error' => $exception->getMessage(),
+            ]);
+
             report($exception);
         }
     }

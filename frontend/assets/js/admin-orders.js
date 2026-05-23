@@ -120,6 +120,7 @@ document.querySelectorAll('.order-status-form').forEach((form) => {
             statusSelect.value = payload.order.status;
             paymentSelect.value = payload.order.payment_status;
             showOrderAlert(payload.message || 'Đã cập nhật đơn hàng.');
+            setTimeout(() => window.location.reload(), 700);
         } catch {
             showOrderAlert('Không kết nối được tới máy chủ đơn hàng.', 'danger');
         } finally {
