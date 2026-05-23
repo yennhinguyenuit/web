@@ -8,8 +8,8 @@
     <link rel="icon" type="image/png" href="/assets/images/logo-new.png?v=2026052306">
     <link rel="apple-touch-icon" href="/assets/images/logo-new.png?v=2026052306">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/app.css?v=2026052309">
-    <link rel="stylesheet" href="/assets/css/frontend.css?v=2026052309">
+    <link rel="stylesheet" href="/assets/css/app.css?v=2026052310">
+    <link rel="stylesheet" href="/assets/css/frontend.css?v=2026052310">
 </head>
 <body class="luxe-body">
 @php
@@ -47,7 +47,7 @@
                     <a class="luxe-login-link" href="{{ route('login') }}">Đăng nhập</a>
                     <a class="luxe-btn luxe-btn-outline" href="{{ route('register') }}">Đăng ký</a>
                 @else
-                    <a class="luxe-login-link d-none d-md-inline text-truncate" style="max-width:160px" href="{{ route('orders.index') }}">
+                    <a class="luxe-login-link d-none d-md-inline text-truncate" style="max-width:160px" href="{{ route('account.show') }}">
                         {{ auth()->user()->name }}
                     </a>
                     <form method="POST" action="{{ route('logout') }}">@csrf
@@ -87,6 +87,7 @@
                             <a href="{{ route('shipping-returns') }}">Vận chuyển & đổi trả</a>
                             <a href="{{ route('gift-cards') }}">Thẻ quà tặng</a>
                             @auth
+                                <a href="{{ route('account.show') }}">Tài khoản của tôi</a>
                                 <a href="{{ route('orders.index') }}">Đơn hàng</a>
                                 <a href="{{ route('contact') }}">Chat với người bán</a>
                                 @if(auth()->user()->isAdmin())

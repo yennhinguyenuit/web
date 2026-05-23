@@ -14,9 +14,22 @@ class OrderController extends Controller
 {
     public function index(): View
     {
-        $orders = Order::with('items')->where('user_id', Auth::id())->latest()->paginate(10);
+        $ordersQuery = Order::where('user_id', Auth::id());
+        $orders = (clone $ordersQuery)->with('items')->latest()->paginate(10);
+        $orderStats = [
+            'total' => (clone $ordersQuery)->count(),
+            'active' => (clone $ordersQuery)->whereIn('status', ['pending', 'confirmed', 'shipping'])->count(),
+            'completed' => (clone $ordersQuery)->where('status', 'completed')->count(),
+            'spent' => (float) (clone $ordersQuery)
+                ->where('status', '!=', 'cancelled')
+                ->where(function ($query) {
+                    $query->where('payment_status', 'paid')
+                        ->orWhere('status', 'completed');
+                })
+                ->sum('total'),
+        ];
 
-        return view('customer.orders.index', compact('orders'));
+        return view('customer.orders.index', compact('orders', 'orderStats'));
     }
 
     public function show(Order $order): View

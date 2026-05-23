@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\CheckoutController;
@@ -61,6 +62,10 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/account', [AccountController::class, 'show'])->name('account.show');
+    Route::patch('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile');
+    Route::patch('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
+
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
     Route::delete('/cart', [CartController::class, 'clear'])->name('cart.clear');
