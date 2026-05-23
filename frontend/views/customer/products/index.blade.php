@@ -56,6 +56,6 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('assets/js/products-filter.js') }}"></script>
+<script src="/assets/js/products-filter.js?v=20260523"></script>
 @endpush
 

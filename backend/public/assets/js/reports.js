@@ -27,7 +27,13 @@ Chart.defaults.plugins.legend.labels.usePointStyle = true;
 Chart.defaults.plugins.legend.labels.boxWidth = 8;
 
 async function loadJson(url) {
-    const response = await fetch(url, { headers: { Accept: 'application/json' } });
+    const response = await fetch(url, {
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+    });
     if (!response.ok) throw new Error('Không thể tải dữ liệu báo cáo');
     return response.json();
 }

@@ -6,11 +6,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Luxe Admin')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=20260523">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2026052302">
 </head>
 <body class="luxe-body">
-<div class="admin-shell">
-    <aside class="admin-sidebar">
+<div class="admin-shell" id="admin-shell">
+    <aside class="admin-sidebar" id="admin-sidebar">
         <h1 class="admin-title">LUXE ADMIN</h1>
 
         <nav class="admin-nav">
@@ -25,6 +25,9 @@
             <a class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">
                 <span class="admin-nav-icon"><svg viewBox="0 0 24 24"><path d="M7 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm10 0a2 2 0 1 0 .001 4A2 2 0 0 0 17 18ZM6.2 6l.9 5.3A3 3 0 0 0 10 14h6.9a3 3 0 0 0 2.9-2.3L21 7H7.1L6.7 4H3v2h3.2Z"/></svg></span>
                 <span>Đơn hàng</span>
+                @if(($adminPendingOrdersCount ?? 0) > 0)
+                    <span class="admin-nav-badge">{{ $adminPendingOrdersCount }}</span>
+                @endif
             </a>
             <a class="{{ request()->routeIs('admin.customers.*') ? 'active' : '' }}" href="{{ route('admin.customers.index') }}">
                 <span class="admin-nav-icon"><svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 1 0-3.9-4.9A5 5 0 0 1 16 11ZM8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-3.3 0-6 1.7-6 3.8V20h12v-2.2C14 15.7 11.3 14 8 14Zm8-.5c-.7 0-1.4.1-2 .2 1.3.9 2 2.1 2 3.6V20h6v-2c0-2.5-2.7-4.5-6-4.5Z"/></svg></span>
@@ -41,6 +44,9 @@
             <a class="{{ request()->routeIs('admin.chats.*') ? 'active' : '' }}" href="{{ route('admin.chats.index') }}">
                 <span class="admin-nav-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v11H7.8L4 19V4Zm3 4v2h10V8H7Zm0 4v2h7v-2H7Z"/></svg></span>
                 <span>Chat người bán</span>
+                @if(($adminNewChatsCount ?? 0) > 0)
+                    <span class="admin-nav-badge">{{ $adminNewChatsCount }}</span>
+                @endif
             </a>
             <a class="{{ request()->routeIs('admin.reviews.*') ? 'active' : '' }}" href="{{ route('admin.reviews.index') }}">
                 <span class="admin-nav-icon"><svg viewBox="0 0 24 24"><path d="M12 17.3 18.2 21l-1.6-7 5.4-4.7-7.1-.6L12 2 9.1 8.7 2 9.3 7.4 14l-1.6 7 6.2-3.7Z"/></svg></span>
@@ -70,8 +76,19 @@
 
     <main class="admin-main">
         <header class="admin-header">
-            <h1>@yield('title', 'Admin Panel')</h1>
+            <div class="admin-header-title">
+                <button type="button" class="admin-sidebar-toggle" id="admin-sidebar-toggle" aria-controls="admin-sidebar" aria-expanded="true">
+                    <span></span><span></span><span></span>
+                </button>
+                <h1>@yield('title', 'Admin Panel')</h1>
+            </div>
             <div class="admin-header-actions">
+                @if(($adminPendingOrdersCount ?? 0) > 0)
+                    <a class="admin-notice-link" href="{{ route('admin.orders.index') }}">{{ $adminPendingOrdersCount }} đơn mới</a>
+                @endif
+                @if(($adminNewChatsCount ?? 0) > 0)
+                    <a class="admin-notice-link" href="{{ route('admin.chats.index') }}">{{ $adminNewChatsCount }} chat mới</a>
+                @endif
                 <button type="button" class="admin-back-link" onclick="window.history.length > 1 ? window.history.back() : window.location.assign('{{ route('admin.dashboard') }}')">Quay lại</button>
                 <a class="admin-home-link" href="{{ route('home') }}">Về trang chủ</a>
             </div>
@@ -94,6 +111,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/admin-layout.js?v=2026052302"></script>
 @stack('scripts')
 </body>
 </html>

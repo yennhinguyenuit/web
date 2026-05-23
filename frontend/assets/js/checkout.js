@@ -17,6 +17,10 @@ const checkoutCsrfToken = document.querySelector('meta[name="csrf-token"]')?.con
 let currentProductDiscount = 0;
 let currentShippingDiscount = 0;
 
+if ((applyCouponButton || couponInput) && !checkoutCsrfToken) {
+    console.error('Checkout CSRF token is missing.');
+}
+
 function money(value) {
     return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ';
 }
@@ -95,13 +99,22 @@ async function applyCoupon(code = null, silent = false) {
         couponMessage.textContent = '';
     }
 
+    if (!checkoutCsrfToken) {
+        console.error('Checkout CSRF token is missing.');
+        couponMessage.className = 'small mt-2 text-danger';
+        couponMessage.textContent = 'Thiếu CSRF token. Vui lòng tải lại trang rồi thử lại.';
+        return;
+    }
+
     const response = await fetch('/checkout/apply-coupon', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'X-CSRF-TOKEN': checkoutCsrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
         },
+        credentials: 'same-origin',
         body: JSON.stringify({
             coupon_code: typedCode,
             product_coupon_code: checkoutProductCouponCode?.value || null,

@@ -51,7 +51,8 @@
                             <div class="seller-chat-empty">Admin trả lời khách hàng trong mục Chat người bán của trang quản trị.</div>
                         @else
                             <div id="seller-chat-log" class="seller-chat-log"></div>
-                            <form id="seller-chat-form" class="seller-chat-form">
+                            <form id="seller-chat-form" class="seller-chat-form" method="POST" action="{{ route('seller-chat.send') }}" data-messages-url="{{ route('seller-chat.messages') }}">
+                                @csrf
                                 <input id="seller-chat-message" class="luxe-input" placeholder="Nhập tin nhắn cho người bán...">
                                 <button class="luxe-btn">Gửi</button>
                             </form>

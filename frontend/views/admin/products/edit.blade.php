@@ -18,5 +18,5 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('assets/js/admin-product-upload.js') }}"></script>
+<script src="/assets/js/admin-product-upload.js?v=20260523"></script>
 @endpush

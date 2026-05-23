@@ -5,6 +5,17 @@ const sellerChatInput = document.getElementById('seller-chat-message');
 const sellerChatToken = document.querySelector('meta[name="csrf-token"]')?.content;
 const sellerChatOpenButtons = document.querySelectorAll('[data-open-seller-chat]');
 const sellerChatCloseButtons = document.querySelectorAll('[data-close-seller-chat]');
+const sellerChatMessagesUrl = sellerChatForm?.dataset.messagesUrl || '/seller-chat/messages';
+const sellerChatSendUrl = sellerChatForm?.getAttribute('action') || '/seller-chat/send';
+
+if (sellerChatForm && (!sellerChatLog || !sellerChatInput || !sellerChatMessagesUrl || !sellerChatSendUrl)) {
+    console.error('Seller chat is missing a required element or route.', {
+        hasLog: Boolean(sellerChatLog),
+        hasInput: Boolean(sellerChatInput),
+        messagesUrl: sellerChatMessagesUrl,
+        sendUrl: sellerChatSendUrl,
+    });
+}
 
 function escapeSellerHtml(value) {
     return String(value)
@@ -13,6 +24,24 @@ function escapeSellerHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+async function readSellerJson(response) {
+    try {
+        return await response.json();
+    } catch {
+        return {};
+    }
+}
+
+function showSellerChatError(message) {
+    if (!sellerChatLog) return;
+
+    sellerChatLog.insertAdjacentHTML(
+        'beforeend',
+        `<div class="seller-chat-empty text-danger">${escapeSellerHtml(message)}</div>`
+    );
+    sellerChatLog.scrollTop = sellerChatLog.scrollHeight;
 }
 
 function openSellerChat() {
@@ -50,11 +79,25 @@ function renderSellerMessages(messages) {
 async function loadSellerMessages() {
     if (!sellerChatLog) return;
 
-    const response = await fetch('/seller-chat/messages', { headers: { Accept: 'application/json' } });
-    if (!response.ok) return;
+    try {
+        const response = await fetch(sellerChatMessagesUrl, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+        const payload = await readSellerJson(response);
 
-    const payload = await response.json();
-    renderSellerMessages(payload.messages || []);
+        if (!response.ok) {
+            showSellerChatError(payload.message || 'Không tải được tin nhắn. Vui lòng tải lại trang.');
+            return;
+        }
+
+        renderSellerMessages(payload.messages || []);
+    } catch {
+        showSellerChatError('Không kết nối được tới máy chủ chat.');
+    }
 }
 
 sellerChatOpenButtons.forEach((button) => {
@@ -67,25 +110,40 @@ sellerChatCloseButtons.forEach((button) => {
 
 sellerChatForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const message = sellerChatInput.value.trim();
+    const message = sellerChatInput?.value.trim();
     if (!message) return;
+
+    if (!sellerChatToken) {
+        console.error('Seller chat CSRF token is missing.');
+        showSellerChatError('Thiếu CSRF token. Vui lòng tải lại trang rồi thử lại.');
+        return;
+    }
 
     sellerChatInput.value = '';
 
-    const response = await fetch('/seller-chat/send', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': sellerChatToken,
-        },
-        body: JSON.stringify({ message }),
-    });
+    try {
+        const response = await fetch(sellerChatSendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': sellerChatToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ message }),
+        });
+        const payload = await readSellerJson(response);
 
-    if (!response.ok) return;
+        if (!response.ok) {
+            showSellerChatError(payload.message || 'Không gửi được tin nhắn. Vui lòng thử lại.');
+            return;
+        }
 
-    const payload = await response.json();
-    renderSellerMessages(payload.messages || []);
+        renderSellerMessages(payload.messages || []);
+    } catch {
+        showSellerChatError('Không kết nối được tới máy chủ chat.');
+    }
 });
 
 if (sellerChatLog) {

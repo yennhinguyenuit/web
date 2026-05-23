@@ -45,5 +45,5 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ asset('assets/js/reports.js') }}"></script>
+<script src="/assets/js/reports.js?v=20260523"></script>
 @endpush

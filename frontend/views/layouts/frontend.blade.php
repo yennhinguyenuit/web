@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Luxe Store')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/app.css?v=20260522">
-<link rel="stylesheet" href="/assets/css/frontend.css?v=20260522">
+    <link rel="stylesheet" href="/assets/css/app.css?v=2026052302">
+<link rel="stylesheet" href="/assets/css/frontend.css?v=2026052302">
 </head>
 <body class="luxe-body">
 @php
@@ -23,7 +23,7 @@
     <div class="luxe-container">
         <div class="luxe-nav">
             <a class="luxe-brand" href="{{ route('home') }}">
-                <img class="luxe-logo" src="{{ asset('assets/images/logo-new.png') }}" alt="Luxe Store">
+                <img class="luxe-logo" src="/assets/images/logo-new.png" alt="Luxe Store">
                 <span>Luxe Store</span>
             </a>
 
@@ -73,10 +73,9 @@
                         <div>
                             <p>Danh mục</p>
                             <a href="{{ route('products.index') }}">Tất cả sản phẩm</a>
-                            <a href="{{ route('products.index', ['category' => 'ao-nam']) }}">Thời trang nam</a>
-                            <a href="{{ route('products.index', ['category' => 'ao-nu']) }}">Thời trang nữ</a>
-                            <a href="{{ route('products.index', ['category' => 'phu-kien']) }}">Phụ kiện</a>
-                            <a href="{{ route('products.index', ['category' => 'giay-dep']) }}">Giày dép</a>
+                            @foreach(($layoutCategories ?? collect())->take(6) as $layoutCategory)
+                                <a href="{{ route('products.index', ['category' => $layoutCategory->slug]) }}">{{ $layoutCategory->name }}</a>
+                            @endforeach
                         </div>
                         <div>
                             <p>Trang khác</p>
@@ -121,7 +120,7 @@
     <div class="luxe-container luxe-footer-grid">
         <div>
             <a class="luxe-brand luxe-footer-brand" href="{{ route('home') }}">
-                <img class="luxe-logo" src="{{ asset('assets/images/logo-new.png') }}" alt="Luxe Store">
+                <img class="luxe-logo" src="/assets/images/logo-new.png" alt="Luxe Store">
                 <span>Luxe Store</span>
             </a>
             <p>Thời trang ứng dụng, sản phẩm dễ chọn, đặt hàng nhanh và hỗ trợ trực tiếp cho khách hàng.</p>
@@ -129,9 +128,9 @@
         <div>
             <h3>Mua sắm</h3>
             <a href="{{ route('products.index') }}">Tất cả sản phẩm</a>
-            <a href="{{ route('products.index', ['category' => 'ao-nam']) }}">Thời trang nam</a>
-            <a href="{{ route('products.index', ['category' => 'ao-nu']) }}">Thời trang nữ</a>
-            <a href="{{ route('products.index', ['category' => 'phu-kien']) }}">Phụ kiện</a>
+            @foreach(($layoutCategories ?? collect())->take(4) as $layoutCategory)
+                <a href="{{ route('products.index', ['category' => $layoutCategory->slug]) }}">{{ $layoutCategory->name }}</a>
+            @endforeach
         </div>
         <div>
             <h3>Hỗ trợ</h3>
@@ -172,7 +171,8 @@
                     <button type="button" data-chatbot-suggestion="Thanh toán online hoạt động như thế nào?">Thanh toán online</button>
                 </div>
                 <div id="chatbot-log" class="chatbot-log"></div>
-                <form id="chatbot-form" class="chatbot-form">
+                <form id="chatbot-form" class="chatbot-form" method="POST" action="{{ route('chatbot.send') }}">
+                    @csrf
                     <input id="chatbot-message" class="luxe-input" placeholder="Hỏi về sản phẩm, coupon, đơn hàng...">
                     <button class="luxe-btn">Gửi</button>
                 </form>
@@ -182,9 +182,8 @@
 @endauth
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{{ asset('assets/js/chatbot.js') }}"></script>
-<script src="{{ asset('assets/js/seller-chat.js') }}"></script>
+<script src="/assets/js/chatbot.js?v=20260523"></script>
+<script src="/assets/js/seller-chat.js?v=20260523"></script>
 @stack('scripts')
 </body>
 </html>
-

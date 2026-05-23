@@ -8,7 +8,7 @@
         <div class="admin-card p-0 overflow-hidden">
             <div id="admin-chat-customers" class="list-group list-group-flush">
                 @forelse($customers as $customer)
-                    <button type="button" class="list-group-item list-group-item-action admin-chat-customer" data-customer-id="{{ $customer->id }}">
+                    <button type="button" class="list-group-item list-group-item-action admin-chat-customer" data-customer-id="{{ $customer->id }}" data-messages-url="{{ route('admin.chats.messages', $customer) }}" data-reply-url="{{ route('admin.chats.reply', $customer) }}">
                         <strong>{{ $customer->name }}</strong>
                         <div class="small text-muted">{{ $customer->email }}</div>
                     </button>
@@ -25,7 +25,8 @@
                 <span class="luxe-badge luxe-badge-dark">Live chat</span>
             </div>
             <div id="admin-chat-log" class="seller-chat-log" style="height:430px"></div>
-            <form id="admin-chat-form" class="seller-chat-form">
+            <form id="admin-chat-form" class="seller-chat-form" method="POST">
+                @csrf
                 <input id="admin-chat-message" class="luxe-input" placeholder="Nhập phản hồi cho khách hàng..." disabled>
                 <button id="admin-chat-submit" class="luxe-btn" disabled>Gửi</button>
             </form>
@@ -35,5 +36,5 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('assets/js/admin-chats.js') }}"></script>
+<script src="/assets/js/admin-chats.js?v=20260523"></script>
 @endpush

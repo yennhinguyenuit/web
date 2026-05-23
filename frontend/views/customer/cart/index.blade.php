@@ -74,5 +74,5 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('assets/js/cart.js') }}"></script>
+<script src="/assets/js/cart.js?v=20260523"></script>
 @endpush

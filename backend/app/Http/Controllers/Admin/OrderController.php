@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\OrderMailService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -25,7 +26,7 @@ class OrderController extends Controller
         return view('admin.orders.show', ['order' => $order->load('items.product', 'user', 'coupon', 'productCoupon', 'shippingCoupon', 'paymentTransactions')]);
     }
 
-    public function updateStatus(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse
+    public function updateStatus(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'status' => ['required', Rule::in(['pending', 'confirmed', 'shipping', 'completed', 'cancelled'])],
@@ -35,6 +36,7 @@ class OrderController extends Controller
         $oldPaymentStatus = $order->payment_status;
 
         DB::transaction(function () use ($order, $data) {
+            $order->loadMissing('items.product');
             $wasCancelled = $order->status === 'cancelled';
             $nextStatus = $data['status'];
 
@@ -61,24 +63,36 @@ class OrderController extends Controller
             $orderMailService->sendStatusUpdated($order, $oldStatus, $oldPaymentStatus);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã cập nhật trạng thái đơn hàng.',
-            'order' => $order,
-        ]);
+        $message = 'Đã cập nhật trạng thái đơn hàng.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'order' => $order,
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
-    public function reviewCancel(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse
+    public function reviewCancel(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'decision' => ['required', Rule::in(['approved', 'rejected'])],
         ]);
 
         if ($order->cancel_status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Đơn hàng không có yêu cầu hủy đang chờ duyệt.',
-            ], 422);
+            $message = 'Đơn hàng không có yêu cầu hủy đang chờ duyệt.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return back()->withErrors(['order' => $message]);
         }
 
         $oldStatus = $order->status;
@@ -113,13 +127,19 @@ class OrderController extends Controller
             $orderMailService->sendStatusUpdated($order, $oldStatus, $oldPaymentStatus);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => $data['decision'] === 'approved'
-                ? 'Đã duyệt hủy đơn hàng.'
-                : 'Đã từ chối yêu cầu hủy. Đơn hàng sẽ tiếp tục được giao.',
-            'order' => $order,
-        ]);
+        $message = $data['decision'] === 'approved'
+            ? 'Đã duyệt hủy đơn hàng.'
+            : 'Đã từ chối yêu cầu hủy. Đơn hàng sẽ tiếp tục được giao.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'order' => $order,
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 }
 

@@ -30,8 +30,8 @@
                 <p class="mb-1"><strong>Lý do:</strong> {{ $order->cancel_reason ?: 'Không nhập' }}</p>
                 @if($order->cancel_status === 'pending')
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-danger cancel-review" data-id="{{ $order->id }}" data-decision="approved">Duyệt hủy</button>
-                        <button class="btn btn-sm btn-outline-secondary cancel-review" data-id="{{ $order->id }}" data-decision="rejected">Từ chối</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger cancel-review" data-id="{{ $order->id }}" data-url="{{ route('admin.orders.cancel-request', $order) }}" data-decision="approved">Duyệt hủy</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary cancel-review" data-id="{{ $order->id }}" data-url="{{ route('admin.orders.cancel-request', $order) }}" data-decision="rejected">Từ chối</button>
                     </div>
                 @endif
             @endif
@@ -72,5 +72,5 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('assets/js/admin-orders.js') }}"></script>
+<script src="/assets/js/admin-orders.js?v=20260523"></script>
 @endpush

@@ -4,7 +4,16 @@ const productReset = document.getElementById('product-reset');
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 const productsList = document.getElementById('products-list');
 
+if ((productForm || productsList) && !csrfToken) {
+    console.error('Admin products CSRF token is missing.');
+}
+
 function showProductAlert(message, type = 'success') {
+    if (!productAlert) {
+        window.alert(message);
+        return;
+    }
+
     productAlert.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
 }
 
@@ -74,7 +83,12 @@ function bindProductButtons(scope = document) {
             if (!confirm('Ẩn sản phẩm này?')) return;
             const response = await fetch(`/admin/products/${button.dataset.id}/hide`, {
                 method: 'PATCH',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
             });
             const payload = await response.json();
             if (!response.ok) return showProductAlert(payload.message || 'Không thể ẩn sản phẩm.', 'danger');
@@ -92,7 +106,12 @@ function bindProductButtons(scope = document) {
             if (!confirm('Xóa sản phẩm khỏi danh sách quản trị?')) return;
             const response = await fetch(`/admin/products/${button.dataset.id}`, {
                 method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
             });
             const payload = await response.json();
             if (!response.ok) return showProductAlert(payload.message || 'Không thể xóa sản phẩm.', 'danger');
@@ -117,7 +136,9 @@ productForm?.addEventListener('submit', async (event) => {
         headers: {
             'Accept': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
         },
+        credentials: 'same-origin',
         body: data,
     });
     const payload = await response.json();

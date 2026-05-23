@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\ChatMessage;
 use App\Services\ChatbotService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ChatbotController extends Controller
 {
-    public function send(Request $request, ChatbotService $chatbotService): JsonResponse
+    public function send(Request $request, ChatbotService $chatbotService): JsonResponse|RedirectResponse
     {
         $data = $request->validate(['message' => ['required', 'string', 'max:1000']]);
 
@@ -28,7 +29,11 @@ class ChatbotController extends Controller
             'message' => $reply,
         ]);
 
-        return response()->json(['success' => true, 'reply' => $reply]);
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'reply' => $reply]);
+        }
+
+        return back()->with('success', $reply);
     }
 }
 

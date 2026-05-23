@@ -7,6 +7,15 @@ const chatbotClose = document.getElementById('chatbot-close');
 const chatbotSuggestionButtons = document.querySelectorAll('[data-chatbot-suggestion]');
 const chatbotCsrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
+if ((chatbotToggle || chatbotForm) && (!chatbotToggle || !chatbotCard || !chatbotForm || !chatbotForm.getAttribute('action'))) {
+    console.error('Chatbot is missing a required element or route.', {
+        hasToggle: Boolean(chatbotToggle),
+        hasCard: Boolean(chatbotCard),
+        hasForm: Boolean(chatbotForm),
+        action: chatbotForm?.getAttribute('action'),
+    });
+}
+
 function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
@@ -16,13 +25,29 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function setChatbotPreference(isOpen) {
+    try {
+        localStorage.setItem('luxe_chatbot_open', isOpen ? '1' : '0');
+    } catch {
+        // Ignore private-mode storage errors.
+    }
+}
+
+function getChatbotPreference() {
+    try {
+        return localStorage.getItem('luxe_chatbot_open') === '1';
+    } catch {
+        return false;
+    }
+}
+
 function setChatbotOpen(isOpen) {
     if (!chatbotCard || !chatbotToggle) return;
 
     chatbotCard.hidden = !isOpen;
     chatbotToggle.setAttribute('aria-expanded', String(isOpen));
     chatbotToggle.textContent = isOpen ? 'Thu gọn chatbot' : 'Mở chatbot';
-    localStorage.setItem('luxe_chatbot_open', isOpen ? '1' : '0');
+    setChatbotPreference(isOpen);
 }
 
 function appendChat(sender, message) {
@@ -36,6 +61,20 @@ function appendChat(sender, message) {
     chatbotLog.scrollTop = chatbotLog.scrollHeight;
 }
 
+async function readChatbotJson(response) {
+    try {
+        return await response.json();
+    } catch {
+        return {};
+    }
+}
+
+function chatbotErrorMessage(payload) {
+    const errors = Object.values(payload.errors || {}).flat().filter(Boolean);
+
+    return payload.message || errors.join(' ') || 'Không thể gửi tin nhắn lúc này. Vui lòng thử lại sau.';
+}
+
 async function sendChatbotMessage(message) {
     if (!message) return;
 
@@ -45,18 +84,35 @@ async function sendChatbotMessage(message) {
         chatbotInput.value = '';
     }
 
-    const response = await fetch('/chatbot/send', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': chatbotCsrfToken,
-        },
-        body: JSON.stringify({ message }),
-    });
+    if (!chatbotCsrfToken) {
+        console.error('Chatbot CSRF token is missing.');
+        appendChat('Trợ lý', 'Thiếu CSRF token. Vui lòng tải lại trang rồi thử lại.');
+        return;
+    }
 
-    const payload = await response.json();
-    appendChat('Trợ lý', response.ok ? payload.reply : 'Không thể gửi tin nhắn lúc này.');
+    const submitButton = chatbotForm?.querySelector('button[type="submit"], button:not([type])');
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+        const response = await fetch(chatbotForm?.getAttribute('action') || '/chatbot/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': chatbotCsrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ message }),
+        });
+        const payload = await readChatbotJson(response);
+
+        appendChat('Trợ lý', response.ok ? payload.reply : chatbotErrorMessage(payload));
+    } catch {
+        appendChat('Trợ lý', 'Không kết nối được tới chatbot. Popup vẫn hoạt động, vui lòng thử lại sau.');
+    } finally {
+        if (submitButton) submitButton.disabled = false;
+    }
 }
 
 chatbotToggle?.addEventListener('click', () => {
@@ -68,12 +124,12 @@ chatbotClose?.addEventListener('click', () => {
 });
 
 if (chatbotCard && chatbotToggle) {
-    setChatbotOpen(localStorage.getItem('luxe_chatbot_open') === '1');
+    setChatbotOpen(getChatbotPreference());
 }
 
 chatbotForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const message = chatbotInput.value.trim();
+    const message = chatbotInput?.value.trim();
     await sendChatbotMessage(message);
 });
 

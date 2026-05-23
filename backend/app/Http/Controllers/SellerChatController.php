@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ChatMessage;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,7 +20,7 @@ class SellerChatController extends Controller
         return response()->json(['messages' => $messages]);
     }
 
-    public function send(Request $request): JsonResponse
+    public function send(Request $request): JsonResponse|RedirectResponse
     {
         $data = $request->validate([
             'message' => ['required', 'string', 'max:1000'],
@@ -31,7 +32,11 @@ class SellerChatController extends Controller
             'message' => $data['message'],
         ]);
 
-        return $this->messages();
+        if ($request->expectsJson()) {
+            return $this->messages();
+        }
+
+        return back()->with('success', 'Đã gửi tin nhắn cho người bán.');
     }
 }
 

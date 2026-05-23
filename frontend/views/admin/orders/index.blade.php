@@ -21,8 +21,8 @@
                         <div class="d-grid gap-1">
                             <span class="order-pill order-pill-pending">Chờ duyệt</span>
                             <div class="d-flex gap-1">
-                                <button class="btn btn-sm btn-outline-danger cancel-review" data-id="{{ $order->id }}" data-decision="approved">Duyệt</button>
-                                <button class="btn btn-sm btn-outline-secondary cancel-review" data-id="{{ $order->id }}" data-decision="rejected">Từ chối</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger cancel-review" data-id="{{ $order->id }}" data-url="{{ route('admin.orders.cancel-request', $order) }}" data-decision="approved">Duyệt</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary cancel-review" data-id="{{ $order->id }}" data-url="{{ route('admin.orders.cancel-request', $order) }}" data-decision="rejected">Từ chối</button>
                             </div>
                         </div>
                     @elseif($order->cancel_status)
@@ -32,11 +32,13 @@
                     @endif
                 </td>
                 <td>
-                    <div class="d-flex gap-2">
-                        <select class="form-select form-select-sm status-select">@foreach(['pending','confirmed','shipping','completed','cancelled'] as $status)<option value="{{ $status }}" @selected($order->status === $status)>{{ $status }}</option>@endforeach</select>
-                        <select class="form-select form-select-sm payment-select">@foreach(['unpaid','pending','paid','failed','refunded'] as $status)<option value="{{ $status }}" @selected($order->payment_status === $status)>{{ $status }}</option>@endforeach</select>
-                        <button class="btn btn-sm btn-dark order-update" data-id="{{ $order->id }}">Lưu</button>
-                    </div>
+                    <form class="order-status-form d-flex gap-2" method="POST" action="{{ route('admin.orders.status', $order) }}" data-id="{{ $order->id }}">
+                        @csrf
+                        @method('PATCH')
+                        <select class="form-select form-select-sm status-select" name="status">@foreach(['pending','confirmed','shipping','completed','cancelled'] as $status)<option value="{{ $status }}" @selected($order->status === $status)>{{ $status }}</option>@endforeach</select>
+                        <select class="form-select form-select-sm payment-select" name="payment_status">@foreach(['unpaid','pending','paid','failed','refunded'] as $status)<option value="{{ $status }}" @selected($order->payment_status === $status)>{{ $status }}</option>@endforeach</select>
+                        <button type="submit" class="btn btn-sm btn-dark order-update">Lưu</button>
+                    </form>
                 </td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-dark" href="{{ route('admin.orders.show', $order) }}">Chi tiết</a></td>
             </tr>
@@ -48,5 +50,5 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('assets/js/admin-orders.js') }}"></script>
+<script src="/assets/js/admin-orders.js?v=20260523"></script>
 @endpush
