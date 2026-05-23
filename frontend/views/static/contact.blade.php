@@ -1,42 +1,49 @@
 @extends('layouts.frontend')
 
-@section('title', 'Liên hệ')
+@section('title', 'Liên hệ Luxe Store')
 
 @section('content')
-<section class="luxe-static-hero">
-    <div class="luxe-container">
-        <p class="luxe-eyebrow">Luxe Store Support</p>
-        <h1 class="luxe-section-title text-white">Liên hệ người bán</h1>
-        <p class="luxe-section-desc text-white-50">Khách hàng có thể gửi tin nhắn trực tiếp cho người bán tại đây. Admin sẽ phản hồi trong trang quản trị.</p>
+<section class="fashion-contact-hero">
+    <img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1800&q=85" alt="Không gian tư vấn thời trang Luxe Store">
+    <div class="luxe-container fashion-contact-hero-inner">
+        <p class="luxe-eyebrow">Luxe Concierge</p>
+        <h1>Cần chọn size, phối đồ hay hỏi đơn hàng? Luxe luôn ở đây.</h1>
+        <p>Gửi tin nhắn trực tiếp cho người bán để được tư vấn nhanh về sản phẩm, tồn kho, mã giảm giá và trạng thái đơn hàng.</p>
     </div>
 </section>
 
-<section class="luxe-section luxe-section-soft">
-    <div class="luxe-container contact-grid">
-        <div class="admin-card contact-info-card">
-            <p class="luxe-eyebrow text-dark mb-2">Thông tin hỗ trợ</p>
-            <h2 class="h3 fw-bold mb-3">Luxe Store</h2>
-            <div class="contact-info-list">
+<section class="fashion-contact-section">
+    <div class="luxe-container fashion-contact-grid">
+        <div class="fashion-contact-info">
+            <p class="luxe-eyebrow text-dark">Studio support</p>
+            <h2>Tư vấn như một stylist riêng cho tủ đồ của bạn.</h2>
+            <p>Luxe ưu tiên phản hồi rõ ràng, thực tế và dễ quyết định: size nào hợp dáng, màu nào dễ phối, sản phẩm nào còn hàng và đơn đang ở trạng thái nào.</p>
+
+            <div class="fashion-contact-list">
                 <div>
-                    <strong>Hotline</strong>
-                    <span>0900 000 000</span>
+                    <span>Hotline</span>
+                    <strong>0900 000 000</strong>
                 </div>
                 <div>
-                    <strong>Email</strong>
-                    <span>support@luxestore.test</span>
+                    <span>Email</span>
+                    <strong>support@luxestore.test</strong>
                 </div>
                 <div>
-                    <strong>Địa chỉ</strong>
-                    <span>12 Nguyễn Trãi, Quận 1, TP.HCM</span>
+                    <span>Studio</span>
+                    <strong>12 Nguyễn Trãi, Quận 1, TP.HCM</strong>
                 </div>
                 <div>
-                    <strong>Thời gian phản hồi</strong>
-                    <span>08:00 - 22:00 hằng ngày</span>
+                    <span>Phản hồi</span>
+                    <strong>08:00 - 22:00 hằng ngày</strong>
                 </div>
+            </div>
+
+            <div class="fashion-contact-image">
+                <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=900&q=85" alt="Editorial styling Luxe Store">
             </div>
         </div>
 
-        <div class="seller-chat-contact" id="seller-chat-box">
+        <div class="seller-chat-contact fashion-contact-chat" id="seller-chat-box">
             <div class="seller-chat-card">
                 <div class="seller-chat-head">
                     <div>
@@ -68,6 +75,16 @@
                 </div>
             </div>
         </div>
+    </div>
+</section>
+
+<section class="fashion-contact-strip">
+    <div class="luxe-container">
+        <span>Size fit</span>
+        <span>Order care</span>
+        <span>Style advice</span>
+        <span>Coupon help</span>
+        <span>PayOS support</span>
     </div>
 </section>
 @endsection
