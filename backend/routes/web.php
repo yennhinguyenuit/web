@@ -20,16 +20,8 @@ Route::redirect('/women', '/products?category=ao-nu')->name('women');
 Route::redirect('/accessories', '/products?category=phu-kien')->name('accessories');
 Route::redirect('/shoes', '/products?category=giay-dep')->name('shoes');
 
-Route::view('/about', 'static.page', [
-    'title' => 'Giới thiệu',
-    'heading' => 'Giới thiệu Luxe Store',
-    'body' => 'Luxe Store là website thương mại điện tử thời trang, tập trung vào trải nghiệm mua sắm rõ ràng, sản phẩm dễ chọn và quy trình đặt hàng nhanh.',
-])->name('about');
-Route::view('/blog', 'static.page', [
-    'title' => 'Blog',
-    'heading' => 'Blog thời trang',
-    'body' => 'Cập nhật xu hướng phối đồ, bộ sưu tập mới và các chương trình khuyến mãi nổi bật tại Luxe Store.',
-])->name('blog');
+Route::view('/about', 'static.about')->name('about');
+Route::view('/blog', 'static.blog')->name('blog');
 Route::view('/contact', 'static.contact')->name('contact');
 Route::view('/reviews', 'static.page', [
     'title' => 'Đánh giá',
