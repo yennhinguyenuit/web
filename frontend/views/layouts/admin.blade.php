@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="/assets/images/logo-new.png?v=2026052306">
     <link rel="apple-touch-icon" href="/assets/images/logo-new.png?v=2026052306">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/admin.css?v=2026052302">
+    <link rel="stylesheet" href="/assets/css/admin.css?v=2026052311">
 </head>
 <body class="luxe-body">
 <div class="admin-shell" id="admin-shell">
@@ -47,7 +47,9 @@
                 <span class="admin-nav-icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v11H7.8L4 19V4Zm3 4v2h10V8H7Zm0 4v2h7v-2H7Z"/></svg></span>
                 <span>Chat người bán</span>
                 @if(($adminNewChatsCount ?? 0) > 0)
-                    <span class="admin-nav-badge">{{ $adminNewChatsCount }}</span>
+                    <span class="admin-nav-badge" data-admin-chat-unread-badge>{{ $adminNewChatsCount }}</span>
+                @else
+                    <span class="admin-nav-badge" data-admin-chat-unread-badge hidden></span>
                 @endif
             </a>
             <a class="{{ request()->routeIs('admin.reviews.*') ? 'active' : '' }}" href="{{ route('admin.reviews.index') }}">
@@ -89,7 +91,9 @@
                     <a class="admin-notice-link" href="{{ route('admin.orders.index') }}">{{ $adminPendingOrdersCount }} đơn mới</a>
                 @endif
                 @if(($adminNewChatsCount ?? 0) > 0)
-                    <a class="admin-notice-link" href="{{ route('admin.chats.index') }}">{{ $adminNewChatsCount }} chat mới</a>
+                    <a class="admin-notice-link" data-admin-chat-unread-link href="{{ route('admin.chats.index') }}">{{ $adminNewChatsCount }} chat mới</a>
+                @else
+                    <a class="admin-notice-link" data-admin-chat-unread-link href="{{ route('admin.chats.index') }}" hidden></a>
                 @endif
                 <button type="button" class="admin-back-link" onclick="window.history.length > 1 ? window.history.back() : window.location.assign('{{ route('admin.dashboard') }}')">Quay lại</button>
                 <a class="admin-home-link" href="{{ route('home') }}">Về trang chủ</a>
@@ -113,7 +117,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/assets/js/admin-layout.js?v=2026052302"></script>
+<script src="/assets/js/admin-layout.js?v=2026052311"></script>
 @stack('scripts')
 </body>
 </html>

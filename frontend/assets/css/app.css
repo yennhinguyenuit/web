@@ -1850,6 +1850,16 @@ a { color: inherit; }
   font-size: 13px;
   letter-spacing: .04em;
 }
+.chatbot-coupon-card i {
+  width: fit-content;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--brand-dark);
+  padding: 2px 8px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
 .chatbot-coupon-card span {
   color: var(--brand);
   font-weight: 900;
@@ -2269,6 +2279,58 @@ a { color: inherit; }
 }
 .admin-nav a:hover .admin-nav-badge,
 .admin-nav a.active .admin-nav-badge {
+  background: #fff;
+  color: var(--brand);
+}
+[data-admin-chat-unread-badge][hidden],
+[data-admin-chat-unread-link][hidden] {
+  display: none !important;
+}
+.admin-chat-customer {
+  display: grid !important;
+  gap: 4px;
+  border-left: 4px solid transparent !important;
+  padding: 16px 20px !important;
+}
+.admin-chat-customer.has-unread {
+  border-left-color: var(--brand) !important;
+  background: linear-gradient(90deg, #fff1f3, #fff) !important;
+}
+.admin-chat-customer.has-unread:not(.active) strong {
+  color: var(--brand-dark);
+}
+.admin-chat-customer-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.admin-chat-unread-badge {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 950;
+}
+.admin-chat-preview {
+  overflow: hidden;
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-chat-customer.active .admin-chat-preview,
+.admin-chat-customer.active .text-muted {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+.admin-chat-customer.active .admin-chat-unread-badge {
   background: #fff;
   color: var(--brand);
 }

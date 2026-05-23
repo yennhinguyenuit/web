@@ -36,9 +36,11 @@ return [
     ],
 
     'gemini' => [
-        'enabled' => env('CHATBOT_PROVIDER', 'local') === 'gemini',
+        'enabled' => env('CHATBOT_PROVIDER')
+            ? env('CHATBOT_PROVIDER') === 'gemini'
+            : (bool) env('GEMINI_API_KEY'),
         'key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
     'payos' => [

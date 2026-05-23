@@ -7,13 +7,15 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class ChatController extends Controller
 {
     public function index(): View
     {
-        $customers = User::where('role', 'customer')
+        $hasAdminReadColumn = Schema::hasColumn('chat_messages', 'admin_read_at');
+        $customersQuery = User::where('role', 'customer')
             ->whereHas('chatMessages', fn ($query) => $query->whereIn('sender', ['customer', 'seller']))
             ->with(['chatMessages' => fn ($query) => $query->whereIn('sender', ['customer', 'seller'])->latest()->limit(1)])
             ->orderByDesc(
@@ -22,15 +24,34 @@ class ChatController extends Controller
                     ->whereIn('sender', ['customer', 'seller'])
                     ->latest()
                     ->limit(1)
-            )
-            ->get();
+            );
 
-        return view('admin.chats.index', compact('customers'));
+        if ($hasAdminReadColumn) {
+            $customersQuery->withCount([
+                'chatMessages as unread_chat_messages_count' => fn ($query) => $query
+                    ->where('sender', 'customer')
+                    ->whereNull('admin_read_at'),
+            ]);
+        }
+
+        $customers = $customersQuery->get();
+
+        return view('admin.chats.index', [
+            'customers' => $customers,
+            'hasAdminReadColumn' => $hasAdminReadColumn,
+        ]);
     }
 
     public function messages(User $customer): JsonResponse
     {
         abort_unless($customer->role === 'customer', 404);
+
+        if (Schema::hasColumn('chat_messages', 'admin_read_at')) {
+            ChatMessage::where('user_id', $customer->id)
+                ->where('sender', 'customer')
+                ->whereNull('admin_read_at')
+                ->update(['admin_read_at' => now()]);
+        }
 
         $messages = ChatMessage::where('user_id', $customer->id)
             ->whereIn('sender', ['customer', 'seller'])
@@ -40,6 +61,7 @@ class ChatController extends Controller
         return response()->json([
             'customer' => $customer->only(['id', 'name', 'email', 'phone']),
             'messages' => $messages,
+            'unread_total' => $this->unreadConversationCount(),
         ]);
     }
 
@@ -58,6 +80,19 @@ class ChatController extends Controller
         ]);
 
         return $this->messages($customer);
+    }
+
+    private function unreadConversationCount(): int
+    {
+        if (! Schema::hasColumn('chat_messages', 'admin_read_at')) {
+            return 0;
+        }
+
+        return ChatMessage::where('sender', 'customer')
+            ->whereNull('admin_read_at')
+            ->whereNotNull('user_id')
+            ->distinct()
+            ->count('user_id');
     }
 }
 

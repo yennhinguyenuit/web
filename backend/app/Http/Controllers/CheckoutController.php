@@ -356,9 +356,7 @@ class CheckoutController extends Controller
                     return false;
                 }
 
-                $isShippingCoupon = str_contains(strtoupper($coupon->code), 'SHIP');
-
-                return $type === 'shipping' ? $isShippingCoupon : ! $isShippingCoupon;
+                return $coupon->target() === $type;
             })
             ->sortByDesc(fn (Coupon $coupon) => (float) $coupon->discount_value)
             ->take(3)

@@ -124,6 +124,7 @@ class DatabaseSeeder extends Seeder
         ])->map(fn ($row) => Coupon::create([
             'code' => $row[0],
             'name' => $row[1],
+            'discount_target' => str_contains($row[0], 'SHIP') ? 'shipping' : 'product',
             'discount_type' => $row[2],
             'discount_value' => $row[3],
             'min_order_value' => $row[4],

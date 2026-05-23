@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ChatbotService
@@ -32,9 +33,12 @@ class ChatbotService
 
         $reply = null;
         $provider = 'local';
+        $aiError = null;
 
         if (config('services.gemini.enabled') && config('services.gemini.key')) {
-            $reply = $this->replyWithGemini($message, $products, $coupons, $fit);
+            $gemini = $this->replyWithGemini($message, $products, $coupons, $fit);
+            $reply = $gemini['reply'];
+            $aiError = $gemini['error'];
             if ($reply !== null) {
                 $provider = 'gemini';
             }
@@ -45,34 +49,65 @@ class ChatbotService
             'products' => $products,
             'coupons' => $coupons,
             'provider' => $provider,
+            'ai_error' => $aiError,
         ];
     }
 
-    private function replyWithGemini(string $message, array $products, array $coupons, ?array $fit): ?string
+    /**
+     * @return array{reply:?string,error:?string}
+     */
+    private function replyWithGemini(string $message, array $products, array $coupons, ?array $fit): array
     {
         $key = config('services.gemini.key');
-        $model = config('services.gemini.model', 'gemini-1.5-flash');
+        $model = config('services.gemini.model', 'gemini-2.5-flash');
         $context = $this->buildStoreContext($products, $coupons, $fit);
 
         try {
-            $response = Http::timeout(10)->post(
-                "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}",
+            $response = Http::timeout(10)->withHeaders([
+                'x-goog-api-key' => $key,
+            ])->post(
+                "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent",
                 [
+                    'system_instruction' => [
+                        'parts' => [[
+                            'text' => 'Bạn là trợ lý mua sắm của Luxe Store. Trả lời tự nhiên, ngắn gọn bằng tiếng Việt. Luôn ưu tiên dữ liệu sản phẩm, giá, size, coupon, checkout, thanh toán và trạng thái đơn hàng được cung cấp. Không tự bịa sản phẩm hoặc mã giảm giá ngoài dữ liệu.',
+                        ]],
+                    ],
                     'contents' => [[
                         'parts' => [[
-                            'text' => "Bạn là trợ lý mua sắm của Luxe Store. Trả lời ngắn gọn bằng tiếng Việt, ưu tiên dữ liệu sản phẩm, giá, size, coupon, checkout, thanh toán và trạng thái đơn hàng. Không tự bịa sản phẩm hoặc mã giảm giá ngoài dữ liệu bên dưới.\n\n{$context}\n\nKhách hỏi: {$message}",
+                            'text' => "{$context}\n\nKhách hỏi: {$message}",
                         ]],
                     ]],
+                    'generationConfig' => [
+                        'temperature' => 0.7,
+                        'topP' => 0.9,
+                        'maxOutputTokens' => 420,
+                    ],
                 ]
             );
 
             if (! $response->successful()) {
-                return null;
+                $error = 'Gemini trả về HTTP '.$response->status();
+                Log::warning('Gemini chatbot request failed.', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return ['reply' => null, 'error' => $error];
             }
 
-            return data_get($response->json(), 'candidates.0.content.parts.0.text');
-        } catch (Throwable) {
-            return null;
+            $reply = data_get($response->json(), 'candidates.0.content.parts.0.text');
+
+            return [
+                'reply' => is_string($reply) && trim($reply) !== '' ? trim($reply) : null,
+                'error' => null,
+            ];
+        } catch (Throwable $exception) {
+            Log::warning('Gemini chatbot request exception.', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return ['reply' => null, 'error' => $exception->getMessage()];
         }
     }
 
@@ -287,12 +322,13 @@ class ChatbotService
     private function formatCoupon(Coupon $coupon): array
     {
         $isPercent = $coupon->discount_type === 'percent';
-        $isShipping = str_contains(strtoupper($coupon->code), 'SHIP');
+        $target = $this->couponTarget($coupon);
 
         return [
             'code' => $coupon->code,
             'name' => $coupon->name,
-            'type' => $isShipping ? 'shipping' : 'product',
+            'type' => $target,
+            'type_label' => $target === 'shipping' ? 'Giảm phí ship' : 'Giảm tiền sản phẩm',
             'discount_label' => $isPercent
                 ? '-'.rtrim(rtrim(number_format((float) $coupon->discount_value, 2), '0'), '.').'%'
                 : '-'.number_format((float) $coupon->discount_value).'đ',
@@ -302,6 +338,17 @@ class ChatbotService
         ];
     }
 
+    private function couponTarget(Coupon $coupon): string
+    {
+        $target = $coupon->discount_target ?? null;
+
+        if (in_array($target, ['product', 'shipping'], true)) {
+            return $target;
+        }
+
+        return str_contains(strtoupper($coupon->code), 'SHIP') ? 'shipping' : 'product';
+    }
+
     private function buildStoreContext(array $products, array $coupons, ?array $fit): string
     {
         $productLines = collect($products)
@@ -309,7 +356,7 @@ class ChatbotService
             ->implode("\n");
 
         $couponLines = collect($coupons)
-            ->map(fn (array $coupon) => "- {$coupon['code']} | {$coupon['discount_label']} | {$coupon['min_order_label']} | {$coupon['end_at_label']}")
+            ->map(fn (array $coupon) => "- {$coupon['code']} | {$coupon['type_label']} | {$coupon['discount_label']} | {$coupon['min_order_label']} | {$coupon['end_at_label']}")
             ->implode("\n");
 
         $fitLine = $fit

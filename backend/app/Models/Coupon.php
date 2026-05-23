@@ -10,6 +10,7 @@ class Coupon extends Model
     protected $fillable = [
         'code',
         'name',
+        'discount_target',
         'discount_type',
         'discount_value',
         'min_order_value',
@@ -37,6 +38,20 @@ class Coupon extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function target(): string
+    {
+        if (in_array($this->discount_target, ['product', 'shipping'], true)) {
+            return $this->discount_target;
+        }
+
+        return str_contains(strtoupper($this->code), 'SHIP') ? 'shipping' : 'product';
+    }
+
+    public function targetLabel(): string
+    {
+        return $this->target() === 'shipping' ? 'Phí ship' : 'Tiền sản phẩm';
     }
 
     public function productOrders(): HasMany

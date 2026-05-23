@@ -75,6 +75,7 @@ function couponCardsHtml(coupons = []) {
     const cards = coupons.map((coupon) => `
         <div class="chatbot-coupon-card">
             <strong>${escapeHtml(coupon.code || '')}</strong>
+            ${coupon.type_label ? `<i>${escapeHtml(coupon.type_label)}</i>` : ''}
             <span>${escapeHtml(coupon.discount_label || '')}</span>
             <small>${escapeHtml(coupon.min_order_label || '')}</small>
             ${coupon.max_discount_label ? `<small>${escapeHtml(coupon.max_discount_label)}</small>` : ''}
@@ -151,6 +152,13 @@ async function sendChatbotMessage(message) {
         const payload = await readChatbotJson(response);
 
         if (response.ok) {
+            if (payload.provider !== 'gemini') {
+                console.error('Chatbot is using local fallback instead of Gemini.', {
+                    provider: payload.provider,
+                    ai_error: payload.ai_error,
+                });
+            }
+
             appendChat('Trợ lý', payload.reply, {
                 products: payload.products || [],
                 coupons: payload.coupons || [],

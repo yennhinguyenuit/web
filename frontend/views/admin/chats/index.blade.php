@@ -8,9 +8,21 @@
         <div class="admin-card p-0 overflow-hidden">
             <div id="admin-chat-customers" class="list-group list-group-flush">
                 @forelse($customers as $customer)
-                    <button type="button" class="list-group-item list-group-item-action admin-chat-customer" data-customer-id="{{ $customer->id }}" data-messages-url="{{ route('admin.chats.messages', $customer) }}" data-reply-url="{{ route('admin.chats.reply', $customer) }}">
-                        <strong>{{ $customer->name }}</strong>
+                    @php
+                        $unreadCount = (int) ($customer->unread_chat_messages_count ?? 0);
+                        $latestMessage = $customer->chatMessages->first();
+                    @endphp
+                    <button type="button" class="list-group-item list-group-item-action admin-chat-customer {{ $unreadCount > 0 ? 'has-unread' : '' }}" data-customer-id="{{ $customer->id }}" data-messages-url="{{ route('admin.chats.messages', $customer) }}" data-reply-url="{{ route('admin.chats.reply', $customer) }}">
+                        <span class="admin-chat-customer-main">
+                            <strong>{{ $customer->name }}</strong>
+                            @if($unreadCount > 0)
+                                <span class="admin-chat-unread-badge">{{ $unreadCount }}</span>
+                            @endif
+                        </span>
                         <div class="small text-muted">{{ $customer->email }}</div>
+                        @if($latestMessage)
+                            <div class="admin-chat-preview">{{ $latestMessage->sender === 'customer' ? 'Khách: ' : 'Shop: ' }}{{ \Illuminate\Support\Str::limit($latestMessage->message, 70) }}</div>
+                        @endif
                     </button>
                 @empty
                     <div class="p-4 text-muted">Chưa có hội thoại.</div>
@@ -36,5 +48,5 @@
 @endsection
 
 @push('scripts')
-<script src="/assets/js/admin-chats.js?v=20260523"></script>
+<script src="/assets/js/admin-chats.js?v=2026052311"></script>
 @endpush

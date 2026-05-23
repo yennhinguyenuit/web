@@ -52,6 +52,7 @@ class CouponController extends Controller
         $data = $request->validate([
             'code' => ['required', 'string', 'max:50', Rule::unique('coupons')->ignore($coupon?->id)],
             'name' => ['required', 'string', 'max:255'],
+            'discount_target' => ['required', Rule::in(['product', 'shipping'])],
             'discount_type' => ['required', Rule::in(['percent', 'fixed'])],
             'discount_value' => ['required', 'numeric', 'min:1'],
             'min_order_value' => ['nullable', 'numeric', 'min:0'],
@@ -64,6 +65,7 @@ class CouponController extends Controller
         ]);
 
         $data['code'] = strtoupper(trim($data['code']));
+        $data['discount_target'] = $data['discount_target'] ?? 'product';
         $data['min_order_value'] = $data['min_order_value'] ?? 0;
         $data['is_active'] = (bool) ($data['is_active'] ?? false);
 

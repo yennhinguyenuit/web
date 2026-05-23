@@ -6,12 +6,13 @@
 <div class="admin-toolbar mb-4"><div class="admin-toolbar-row"><div><h2 class="h5 fw-bold mb-1">Coupon</h2><p class="text-muted mb-0">Quản lý mã giảm giá theo phần trăm hoặc số tiền.</p></div><a class="btn btn-dark" href="{{ route('admin.coupons.create') }}">Tạo coupon</a></div></div>
 <div class="admin-card table-responsive">
     <table class="table align-middle mb-0">
-        <thead><tr><th>Mã</th><th>Tên</th><th>Loại</th><th>Giá trị</th><th>Hạng</th><th>Đã dùng</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr><th>Mã</th><th>Tên</th><th>Áp dụng</th><th>Loại</th><th>Giá trị</th><th>Hạng</th><th>Đã dùng</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
         @foreach($coupons as $coupon)
             <tr>
                 <td class="fw-bold">{{ $coupon->code }}</td>
                 <td>{{ $coupon->name }}</td>
+                <td>{{ $coupon->targetLabel() }}</td>
                 <td>{{ $coupon->discount_type }}</td>
                 <td>{{ number_format($coupon->discount_value) }}</td>
                 <td>{{ $coupon->customer_tier ?: 'Tất cả' }}</td>

@@ -72,8 +72,10 @@ class CouponService
 
     public function isShippingCoupon(Coupon|string $coupon): bool
     {
-        $code = $coupon instanceof Coupon ? $coupon->code : $coupon;
+        if ($coupon instanceof Coupon) {
+            return $coupon->target() === 'shipping';
+        }
 
-        return str_contains(strtoupper($code), 'SHIP');
+        return str_contains(strtoupper($coupon), 'SHIP');
     }
 }

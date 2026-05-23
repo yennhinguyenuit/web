@@ -7,6 +7,8 @@ const adminChatInput = document.getElementById('admin-chat-message');
 const adminChatSubmit = document.getElementById('admin-chat-submit');
 let activeCustomerId = null;
 let adminChatTimer = null;
+const adminChatNavBadges = document.querySelectorAll('[data-admin-chat-unread-badge]');
+const adminChatNoticeLinks = document.querySelectorAll('[data-admin-chat-unread-link]');
 
 if ((adminChatForm || adminChatLog) && (!adminChatForm || !adminChatLog || !adminChatInput || !adminChatSubmit)) {
     console.error('Admin chat is missing a required element.', {
@@ -62,6 +64,32 @@ function renderAdminMessages(messages) {
     adminChatLog.scrollTop = adminChatLog.scrollHeight;
 }
 
+function updateUnreadIndicators(button, unreadTotal = null) {
+    button?.classList.remove('has-unread');
+    button?.querySelector('.admin-chat-unread-badge')?.remove();
+
+    if (unreadTotal === null) return;
+
+    adminChatNavBadges.forEach((badge) => {
+        if (unreadTotal > 0) {
+            badge.hidden = false;
+            badge.textContent = String(unreadTotal);
+        } else {
+            badge.hidden = true;
+            badge.textContent = '';
+        }
+    });
+
+    adminChatNoticeLinks.forEach((link) => {
+        if (unreadTotal > 0) {
+            link.hidden = false;
+            link.textContent = `${unreadTotal} chat mới`;
+        } else {
+            link.hidden = true;
+        }
+    });
+}
+
 async function loadAdminChat(button) {
     const customerId = button.dataset.customerId || button.dataset.id;
     const messagesUrl = button.dataset.messagesUrl || `/admin/chats/${customerId}/messages`;
@@ -97,6 +125,7 @@ async function loadAdminChat(button) {
         adminChatInput.disabled = false;
         adminChatSubmit.disabled = false;
         renderAdminMessages(payload.messages || []);
+        updateUnreadIndicators(button, payload.unread_total);
     } catch {
         showAdminChatError('Không kết nối được tới máy chủ chat.');
     }
