@@ -34,7 +34,7 @@ class ChatbotService
                 [
                     'contents' => [[
                         'parts' => [[
-                            'text' => "Bạn là trợ lý mua sắm của Luxe Store, website bán hàng thời trang Laravel. Trả lời ngắn gọn bằng tiếng Việt, ưu tiên hướng dẫn về sản phẩm, coupon, checkout, thanh toán online và trạng thái đơn hàng. Không nhắc tên nhà cung cấp AI trong câu trả lời.\n\n{$context}\n\nKhách hỏi: {$message}",
+                            'text' => "Bạn là trợ lý mua sắm của Luxe Store, website bán hàng thời trang Laravel. Trả lời ngắn gọn bằng tiếng Việt, ưu tiên hướng dẫn về sản phẩm, coupon, checkout, thanh toán online và trạng thái đơn hàng. Không nhắc tên nhà cung cấp dịch vụ trong câu trả lời.\n\n{$context}\n\nKhách hỏi: {$message}",
                         ]],
                     ]],
                 ]
