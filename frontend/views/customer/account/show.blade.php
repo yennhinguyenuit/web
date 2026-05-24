@@ -120,7 +120,7 @@
                 <a href="{{ route('orders.show', $order) }}" class="account-order-card">
                     <span>{{ $order->order_code }}</span>
                     <strong>{{ number_format($order->total) }}đ</strong>
-                    <small>{{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y') }}</small>
+                    <small>{{ $order->placedAtLabel('d/m/Y') }}</small>
                     <em class="{{ $order->statusBadgeClass() }}">{{ $order->statusLabel() }}</em>
                 </a>
             @empty

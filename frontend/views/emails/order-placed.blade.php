@@ -1,7 +1,7 @@
 <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6">
     <h2 style="margin:0 0 12px;color:#800020">Hóa đơn đặt hàng Luxe Store</h2>
     <p>Xin chào <strong>{{ $order->customer_name }}</strong>,</p>
-    <p>Đơn hàng <strong>{{ $order->order_code }}</strong> đã được tạo thành công lúc {{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y H:i') }}.</p>
+    <p>Đơn hàng <strong>{{ $order->order_code }}</strong> đã được tạo thành công lúc {{ $order->placedAtLabel() }}.</p>
 
     <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin:16px 0">
         <thead>

@@ -14,7 +14,7 @@
         <h1 class="h3 mb-3">Thanh toán đơn {{ $order->order_code }}</h1>
 
         <div class="bg-white border rounded-3 p-4">
-            <p>Ngày đặt hàng: <strong>{{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y H:i') }}</strong></p>
+            <p>Ngày đặt hàng: <strong>{{ $order->placedAtLabel() }}</strong></p>
             <p>Tổng thanh toán: <strong>{{ number_format($order->total) }}đ</strong></p>
 
             @if($order->payment_method === 'payos')

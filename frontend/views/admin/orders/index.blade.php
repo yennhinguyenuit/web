@@ -11,7 +11,7 @@
         @foreach($orders as $order)
             <tr id="order-row-{{ $order->id }}" data-payment-method="{{ $order->payment_method }}">
                 <td class="fw-semibold">{{ $order->order_code }}</td>
-                <td>{{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y H:i') }}</td>
+                <td>{{ $order->placedAtLabel() }}</td>
                 <td>{{ $order->customer_name }}</td>
                 <td class="fw-semibold">{{ number_format($order->total) }}đ</td>
                 <td><span class="{{ $order->statusBadgeClass() }} order-status" data-status="{{ $order->status }}">{{ $order->statusLabel() }}</span></td>

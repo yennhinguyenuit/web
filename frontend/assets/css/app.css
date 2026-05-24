@@ -2777,6 +2777,19 @@ a { color: inherit; }
   color: #404040;
 }
 
+#orders-table .order-status-form {
+  align-items: center;
+  min-width: 310px;
+  flex-wrap: nowrap;
+}
+#orders-table .status-select,
+#orders-table .payment-select {
+  min-width: 132px;
+}
+#orders-table .order-update {
+  min-width: 58px;
+}
+
 .report-page {
   display: grid;
   gap: 24px;

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class Order extends Model
 {
@@ -97,6 +98,18 @@ class Order extends Model
     public function paymentBadgeClass(): string
     {
         return 'payment-pill payment-pill-'.$this->payment_status;
+    }
+
+    public function placedAt(): ?Carbon
+    {
+        $date = $this->ordered_at ?? $this->created_at;
+
+        return $date?->copy()->timezone(config('app.display_timezone', 'Asia/Ho_Chi_Minh'));
+    }
+
+    public function placedAtLabel(string $format = 'd/m/Y H:i'): string
+    {
+        return $this->placedAt()?->format($format) ?? '';
     }
 
     public function cancelStatusLabel(): ?string

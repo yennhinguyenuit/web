@@ -7,7 +7,7 @@
     <div class="col-lg-5">
         <div class="admin-card">
             <h2 class="h5 fw-bold">{{ $order->order_code }}</h2>
-            <p class="mb-1"><strong>Ngày đặt:</strong> {{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y H:i') }}</p>
+            <p class="mb-1"><strong>Ngày đặt:</strong> {{ $order->placedAtLabel() }}</p>
             <p class="mb-1"><strong>Khách:</strong> {{ $order->customer_name }} - {{ $order->customer_phone }}</p>
             <p class="mb-1"><strong>Địa chỉ:</strong> {{ $order->customer_address }}</p>
             <p class="mb-1"><strong>Vận chuyển:</strong> {{ $order->shippingMethodLabel() }} - {{ number_format($order->shipping_fee) }}đ</p>

@@ -68,7 +68,7 @@
                                         <strong>{{ $order->order_code }}</strong>
                                         <small>{{ $order->items->count() }} sản phẩm</small>
                                     </td>
-                                    <td>{{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y') }}</td>
+                                    <td>{{ $order->placedAtLabel('d/m/Y') }}</td>
                                     <td><b>{{ number_format($order->total) }}đ</b></td>
                                     <td><span class="{{ $order->statusBadgeClass() }}">{{ $order->statusLabel() }}</span></td>
                                     <td><span class="{{ $order->paymentBadgeClass() }}">{{ $order->paymentStatusLabel() }}</span></td>

@@ -13,7 +13,7 @@
         <thead><tr><th>Mã đơn</th><th>Ngày</th><th>Tổng</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
         @foreach($customer->orders as $order)
-            <tr><td>{{ $order->order_code }}</td><td>{{ $order->created_at->format('d/m/Y') }}</td><td>{{ number_format($order->total) }}đ</td><td>{{ $order->status }}</td><td><a class="btn btn-sm btn-outline-dark" href="{{ route('admin.orders.show', $order) }}">Xem</a></td></tr>
+            <tr><td>{{ $order->order_code }}</td><td>{{ $order->placedAtLabel('d/m/Y') }}</td><td>{{ number_format($order->total) }}đ</td><td>{{ $order->status }}</td><td><a class="btn btn-sm btn-outline-dark" href="{{ route('admin.orders.show', $order) }}">Xem</a></td></tr>
         @endforeach
         </tbody>
     </table>

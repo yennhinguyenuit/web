@@ -19,7 +19,7 @@
             <div>
                 <p class="luxe-eyebrow text-dark mb-2">Chi tiết đơn hàng</p>
                 <h1 class="h3">{{ $order->order_code }}</h1>
-                <div class="text-muted">Ngày đặt hàng: {{ optional($order->ordered_at ?? $order->created_at)->format('d/m/Y H:i') }}</div>
+                <div class="text-muted">Ngày đặt hàng: {{ $order->placedAtLabel() }}</div>
             </div>
             <div class="text-end">
                 <span class="{{ $order->statusBadgeClass() }}">{{ $order->statusLabel() }}</span>
@@ -203,4 +203,3 @@
     </div>
 </section>
 @endsection
-
