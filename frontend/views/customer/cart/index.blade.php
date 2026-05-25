@@ -22,7 +22,7 @@
                 <div class="cart-items-list">
                     @foreach($cart->items as $item)
                         <div class="cart-item-card">
-                            <img src="{{ $item->product->image ?: 'https://placehold.co/160x200?text=Luxe' }}" alt="{{ $item->product->name }}">
+                            <img src="{{ $item->displayImage() ?: 'https://placehold.co/160x200?text=Luxe' }}" alt="{{ $item->product->name }}">
                             <div class="cart-item-info">
                                 <h2>{{ $item->product->name }}</h2>
                                 <p>Đơn giá: {{ number_format($item->unit_price) }}đ</p>
@@ -38,7 +38,7 @@
                                     @csrf
                                     @method('PATCH')
                                     <button type="button" class="cart-qty-btn" data-cart-delta="-1">-</button>
-                                    <input type="number" name="quantity" value="{{ $item->quantity }}" min="1" max="{{ $item->product->stock }}">
+                                    <input type="number" name="quantity" value="{{ $item->quantity }}" min="1" max="{{ $item->availableStock() }}">
                                     <button type="button" class="cart-qty-btn" data-cart-delta="1">+</button>
                                 </form>
                             </div>

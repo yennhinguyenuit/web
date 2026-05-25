@@ -120,6 +120,16 @@ class Product extends Model
         return $this->hasMany(Review::class);
     }
 
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function activeVariants(): HasMany
+    {
+        return $this->variants()->where('is_active', true);
+    }
+
     public function flashSales(): BelongsToMany
     {
         return $this->belongsToMany(FlashSale::class, 'flash_sale_items')->withTimestamps();

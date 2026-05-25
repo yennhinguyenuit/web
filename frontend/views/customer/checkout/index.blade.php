@@ -82,7 +82,7 @@
                 <div class="checkout-summary-products">
                     @foreach($cart->items as $item)
                         <div class="checkout-summary-item">
-                            <img src="{{ $item->product->image ?: 'https://via.placeholder.com/96x120?text=Luxe' }}" alt="{{ $item->product->name }}">
+                            <img src="{{ $item->displayImage() ?: 'https://via.placeholder.com/96x120?text=Luxe' }}" alt="{{ $item->product->name }}">
                             <div>
                                 <strong>{{ $item->product->name }}</strong>
                                 <span>SL: {{ $item->quantity }}</span>

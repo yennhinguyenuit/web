@@ -40,6 +40,7 @@ class ProductController extends Controller
     {
         $product = Product::with([
             'category',
+            'activeVariants',
             'reviews' => fn ($query) => $query->where('is_visible', true)
                 ->with(['user', 'replier'])
                 ->latest(),

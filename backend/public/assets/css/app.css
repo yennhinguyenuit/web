@@ -2739,6 +2739,48 @@ a { color: inherit; }
   color: var(--muted);
   font-size: 13px;
 }
+.variant-editor {
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #fff;
+  padding: 18px;
+}
+.variant-editor-head h3 {
+  margin: 0;
+  color: #09090b;
+  font-size: 18px;
+  font-weight: 900;
+}
+.variant-editor-head p {
+  margin: 6px 0 0;
+  color: #71717a;
+  font-size: 13px;
+}
+.variant-editor-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.variant-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.1fr) 76px minmax(120px, 0.8fr) 96px minmax(180px, 1.4fr) 72px;
+  gap: 10px;
+  align-items: end;
+  border-top: 1px solid #f4f4f5;
+  padding-top: 12px;
+}
+.variant-row .form-label {
+  font-size: 12px;
+}
+.variant-image-field {
+  min-width: 0;
+}
+.variant-active-check {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-height: 38px;
+}
 .product-color-dot {
   display: inline-block;
   width: 16px;
@@ -3455,6 +3497,9 @@ a { color: inherit; }
   .product-info-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .variant-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .order-progress {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3505,6 +3550,9 @@ a { color: inherit; }
   }
   .checkout-field-grid,
   .product-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .variant-row {
     grid-template-columns: 1fr;
   }
   .checkout-coupon-suggestions {

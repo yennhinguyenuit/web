@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -45,11 +46,14 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $data = $this->validated($request);
+        $variants = $data['variants'] ?? [];
+        unset($data['variants']);
         $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['name']);
         $data['image'] = $this->resolveProductImage($request, $data['image'] ?? null);
         unset($data['image_file']);
 
         $product = Product::create($data)->load('category');
+        $this->syncVariants($product, $variants);
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Đã thêm sản phẩm.', 'product' => $product], 201);
@@ -61,7 +65,7 @@ class ProductController extends Controller
     public function edit(Product $product): View
     {
         return view('admin.products.edit', [
-            'product' => $product,
+            'product' => $product->load('variants'),
             'categories' => Category::orderBy('name')->get(),
         ]);
     }
@@ -69,10 +73,13 @@ class ProductController extends Controller
     public function update(Request $request, Product $product): JsonResponse|RedirectResponse
     {
         $data = $this->validated($request, $product);
+        $variants = $data['variants'] ?? [];
+        unset($data['variants']);
         $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['name']);
         $data['image'] = $this->resolveProductImage($request, $data['image'] ?? $product->image);
         unset($data['image_file']);
         $product->update($data);
+        $this->syncVariants($product, $variants);
         $product->load('category');
 
         if ($request->expectsJson()) {
@@ -121,7 +128,92 @@ class ProductController extends Controller
             'image' => ['nullable', 'string', 'max:1000'],
             'image_file' => ['nullable', 'image', 'max:4096'],
             'is_active' => ['nullable', 'boolean'],
+            'variants' => ['nullable', 'array'],
+            'variants.*.id' => ['nullable', 'integer', 'exists:product_variants,id'],
+            'variants.*.name' => ['nullable', 'string', 'max:255'],
+            'variants.*.sku' => ['nullable', 'string', 'max:100'],
+            'variants.*.color_name' => ['nullable', 'string', 'max:80'],
+            'variants.*.color_hex' => ['nullable', 'string', 'max:32'],
+            'variants.*.image' => ['nullable', 'string', 'max:1000'],
+            'variants.*.stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.is_active' => ['nullable', 'boolean'],
         ]);
+    }
+
+    private function syncVariants(Product $product, array $variants): void
+    {
+        $keptVariantIds = [];
+        $seenColors = [];
+        $sortOrder = 0;
+
+        foreach ($variants as $variantData) {
+            if (! $this->variantRowHasData($variantData)) {
+                continue;
+            }
+
+            $payload = [
+                'name' => $this->blankToNull($variantData['name'] ?? null),
+                'sku' => $this->blankToNull($variantData['sku'] ?? null),
+                'color_name' => $this->blankToNull($variantData['color_name'] ?? null),
+                'color_hex' => $this->blankToNull($variantData['color_hex'] ?? null),
+                'image' => $this->blankToNull($variantData['image'] ?? null),
+                'stock' => (int) ($variantData['stock'] ?? 0),
+                'sort_order' => $sortOrder++,
+                'is_active' => (bool) ($variantData['is_active'] ?? false),
+            ];
+
+            if ($payload['color_hex'] && in_array($payload['color_hex'], $seenColors, true)) {
+                continue;
+            }
+            if ($payload['color_hex']) {
+                $seenColors[] = $payload['color_hex'];
+            }
+
+            $variant = isset($variantData['id'])
+                ? $product->variants()->whereKey($variantData['id'])->first()
+                : null;
+
+            if ($variant) {
+                $variant->update($payload);
+            } else {
+                $variant = $product->variants()->create($payload);
+            }
+
+            $keptVariantIds[] = $variant->id;
+        }
+
+        if ($keptVariantIds !== []) {
+            $product->variants()->whereNotIn('id', $keptVariantIds)->update(['is_active' => false]);
+            $product->updateQuietly(['stock' => $product->variants()->where('is_active', true)->sum('stock')]);
+        }
+    }
+
+    private function blankToNull(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    private function variantRowHasData(array $variantData): bool
+    {
+        if (filled($variantData['id'] ?? null)) {
+            return true;
+        }
+
+        if ((int) ($variantData['stock'] ?? 0) > 0) {
+            return true;
+        }
+
+        foreach (['name', 'sku', 'color_name', 'image'] as $field) {
+            if (filled($variantData[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        $colorHex = $this->blankToNull($variantData['color_hex'] ?? null);
+
+        return $colorHex !== null && $colorHex !== '#800020';
     }
 
     private function resolveProductImage(Request $request, ?string $currentImage): ?string

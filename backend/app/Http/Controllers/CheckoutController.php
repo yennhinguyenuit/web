@@ -6,6 +6,7 @@ use App\Models\Cart;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Services\CouponService;
 use App\Services\OrderMailService;
 use App\Services\PaymentService;
@@ -24,7 +25,7 @@ class CheckoutController extends Controller
 {
     public function index(): View|RedirectResponse
     {
-        $cart = Cart::firstOrCreate(['user_id' => Auth::id()])->load('items.product');
+        $cart = Cart::firstOrCreate(['user_id' => Auth::id()])->load('items.product', 'items.productVariant.product');
         if ($cart->items->isEmpty()) {
             return redirect()->route('cart.index')->withErrors(['cart' => 'Giỏ hàng đang trống.']);
         }
@@ -125,7 +126,7 @@ class CheckoutController extends Controller
 
         $order = DB::transaction(function () use ($data, $couponService, $paymentService) {
             $cart = Cart::where('user_id', Auth::id())->lockForUpdate()->firstOrFail();
-            $cart->load('items.product');
+            $cart->load('items.product', 'items.productVariant.product');
 
             if ($cart->items->isEmpty()) {
                 throw ValidationException::withMessages(['cart' => 'Giỏ hàng đang trống.']);
@@ -163,10 +164,24 @@ class CheckoutController extends Controller
             );
 
             foreach ($cart->items as $item) {
-                $updated = Product::where('id', $item->product_id)
-                    ->where('is_active', true)
-                    ->where('stock', '>=', $item->quantity)
-                    ->decrement('stock', $item->quantity);
+                if ($item->product_variant_id) {
+                    $updated = ProductVariant::where('id', $item->product_variant_id)
+                        ->where('product_id', $item->product_id)
+                        ->where('is_active', true)
+                        ->where('stock', '>=', $item->quantity)
+                        ->decrement('stock', $item->quantity);
+
+                    if ($updated > 0) {
+                        Product::where('id', $item->product_id)
+                            ->where('stock', '>=', $item->quantity)
+                            ->decrement('stock', $item->quantity);
+                    }
+                } else {
+                    $updated = Product::where('id', $item->product_id)
+                        ->where('is_active', true)
+                        ->where('stock', '>=', $item->quantity)
+                        ->decrement('stock', $item->quantity);
+                }
 
                 if ($updated === 0) {
                     throw ValidationException::withMessages([
@@ -209,8 +224,9 @@ class CheckoutController extends Controller
             foreach ($cart->items as $item) {
                 $order->items()->create([
                     'product_id' => $item->product_id,
+                    'product_variant_id' => $item->product_variant_id,
                     'product_name' => $item->product->name,
-                    'product_image' => $item->product->image,
+                    'product_image' => $item->displayImage(),
                     'selected_size' => $item->selected_size,
                     'selected_color' => $item->selected_color,
                     'selected_color_name' => $item->selected_color_name,
