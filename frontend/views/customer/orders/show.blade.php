@@ -61,7 +61,7 @@
                     <div class="order-product-list">
                         @foreach($order->items as $item)
                             <div class="order-product-row">
-                                <img src="{{ $item->product_image ?: 'https://placehold.co/120x150?text=Product' }}" alt="{{ $item->product_name }}">
+                                <img src="{{ $item->displayImage() ?: 'https://placehold.co/120x150?text=Product' }}" alt="{{ $item->product_name }}">
                                 <div>
                                     <strong>{{ $item->product_name }}</strong>
                                     <span>Số lượng: {{ $item->quantity }}</span>
@@ -153,7 +153,7 @@
                         <div class="col-lg-6">
                             <div class="border rounded-3 p-3 h-100 bg-white">
                                 <div class="d-flex gap-3 mb-3">
-                                    <img src="{{ $item->product_image ?: 'https://placehold.co/120x150?text=Product' }}" alt="{{ $item->product_name }}" width="72" height="90" class="rounded object-fit-cover">
+                                    <img src="{{ $item->displayImage() ?: 'https://placehold.co/120x150?text=Product' }}" alt="{{ $item->product_name }}" width="72" height="90" class="rounded object-fit-cover">
                                     <div>
                                         <div class="fw-bold">{{ $item->product_name }}</div>
                                         @if($review)

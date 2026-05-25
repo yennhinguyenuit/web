@@ -45,16 +45,21 @@
                 @foreach($order->items as $item)
                     <tr>
                         <td>
-                            <div class="fw-semibold">{{ $item->product_name }}</div>
-                            @if($item->selected_size || $item->selected_color)
-                                <div class="small text-muted">
-                                    @if($item->selected_size) Size {{ $item->selected_size }} @endif
-                                    @if($item->selected_color)
-                                        <span class="product-color-dot" style="--product-color: {{ $item->selected_color }}"></span>
-                                        {{ $item->selected_color_name ?: $item->selected_color }}
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="{{ $item->displayImage() ?: 'https://placehold.co/120x150?text=Product' }}" alt="{{ $item->product_name }}" width="72" height="90" class="rounded" style="object-fit: cover; flex: 0 0 72px;">
+                                <div>
+                                    <div class="fw-semibold">{{ $item->product_name }}</div>
+                                    @if($item->selected_size || $item->selected_color)
+                                        <div class="small text-muted">
+                                            @if($item->selected_size) Size {{ $item->selected_size }} @endif
+                                            @if($item->selected_color)
+                                                <span class="product-color-dot" style="--product-color: {{ $item->selected_color }}"></span>
+                                                {{ $item->selected_color_name ?: $item->selected_color }}
+                                            @endif
+                                        </div>
                                     @endif
                                 </div>
-                            @endif
+                            </div>
                         </td>
                         <td>{{ number_format($item->unit_price) }}đ</td>
                         <td>{{ $item->quantity }}</td>

@@ -43,4 +43,17 @@ class OrderItem extends Model
     {
         return $this->belongsTo(ProductVariant::class);
     }
+
+    public function displayImage(): ?string
+    {
+        if ($this->product_image) {
+            return $this->product_image;
+        }
+
+        if ($this->relationLoaded('productVariant') && $this->productVariant) {
+            return $this->productVariant->displayImage();
+        }
+
+        return $this->product?->image;
+    }
 }

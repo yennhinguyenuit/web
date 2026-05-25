@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -23,7 +24,13 @@ class OrderController extends Controller
 
     public function show(Order $order): View
     {
-        return view('admin.orders.show', ['order' => $order->load('items.product', 'user', 'coupon', 'productCoupon', 'shippingCoupon', 'paymentTransactions')]);
+        $relations = ['items.product', 'user', 'coupon', 'productCoupon', 'shippingCoupon', 'paymentTransactions'];
+
+        if (Schema::hasTable('product_variants') && Schema::hasColumn('order_items', 'product_variant_id')) {
+            $relations[] = 'items.productVariant.product';
+        }
+
+        return view('admin.orders.show', ['order' => $order->load($relations)]);
     }
 
     public function updateStatus(Request $request, Order $order, OrderMailService $orderMailService): JsonResponse|RedirectResponse

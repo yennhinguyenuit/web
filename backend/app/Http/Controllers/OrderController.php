@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class OrderController extends Controller
@@ -36,8 +37,14 @@ class OrderController extends Controller
     {
         abort_unless($order->user_id === Auth::id(), 403);
 
+        $relations = ['items.product', 'coupon', 'productCoupon', 'shippingCoupon', 'paymentTransactions', 'reviews.replier'];
+
+        if (Schema::hasTable('product_variants') && Schema::hasColumn('order_items', 'product_variant_id')) {
+            $relations[] = 'items.productVariant.product';
+        }
+
         return view('customer.orders.show', [
-            'order' => $order->load('items.product', 'coupon', 'productCoupon', 'shippingCoupon', 'paymentTransactions', 'reviews.replier'),
+            'order' => $order->load($relations),
         ]);
     }
 
