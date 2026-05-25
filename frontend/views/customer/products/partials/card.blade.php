@@ -1,11 +1,11 @@
 <article class="luxe-card">
-    <a class="luxe-card-media" href="{{ route('products.show', $product->slug) }}">
+    <a class="luxe-card-media" href="{{ route('products.show', $product->slug) }}" data-track-product-click data-product-id="{{ $product->id }}">
         <img src="{{ $product->image ?: 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=900&q=80' }}" alt="{{ $product->name }}" loading="lazy">
         <span class="luxe-card-badge">{{ $product->category->name ?? 'Sản phẩm' }}</span>
     </a>
     <div class="luxe-card-body">
         <div>
-            <a class="luxe-card-title" href="{{ route('products.show', $product->slug) }}">{{ $product->name }}</a>
+            <a class="luxe-card-title" href="{{ route('products.show', $product->slug) }}" data-track-product-click data-product-id="{{ $product->id }}">{{ $product->name }}</a>
             @if($product->color)
                 <div class="product-color-line">
                     <span class="product-color-dot" style="--product-color: {{ $product->color }}"></span>

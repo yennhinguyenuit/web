@@ -54,7 +54,16 @@ class CouponController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'discount_target' => ['required', Rule::in(['product', 'shipping'])],
             'discount_type' => ['required', Rule::in(['percent', 'fixed'])],
-            'discount_value' => ['required', 'numeric', 'min:1'],
+            'discount_value' => [
+                'required',
+                'numeric',
+                'min:1',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    if ($request->input('discount_type') === 'percent' && (float) $value > 100) {
+                        $fail('Giá trị giảm theo phần trăm không được vượt quá 100.');
+                    }
+                },
+            ],
             'min_order_value' => ['nullable', 'numeric', 'min:0'],
             'max_discount' => ['nullable', 'numeric', 'min:0'],
             'usage_limit' => ['nullable', 'integer', 'min:0'],

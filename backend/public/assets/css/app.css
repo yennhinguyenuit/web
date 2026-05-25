@@ -2919,6 +2919,59 @@ a { color: inherit; }
   width: 100% !important;
   height: 100% !important;
 }
+.report-list {
+  display: grid;
+  gap: 10px;
+}
+.report-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f4f4f5;
+  padding: 10px 0;
+}
+.report-list-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: #3f3f46;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-list-row strong {
+  color: #09090b;
+  font-size: 18px;
+  font-weight: 900;
+}
+.report-table-wrap {
+  overflow-x: auto;
+}
+.report-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+.report-table th,
+.report-table td {
+  border-bottom: 1px solid #f4f4f5;
+  padding: 12px 10px;
+  color: #3f3f46;
+  font-size: 14px;
+  text-align: left;
+  vertical-align: top;
+}
+.report-table th {
+  color: #71717a;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.report-empty {
+  color: #71717a;
+  font-weight: 700;
+}
 
 .account-hero,
 .orders-page-hero {

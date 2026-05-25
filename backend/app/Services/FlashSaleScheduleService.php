@@ -52,9 +52,12 @@ class FlashSaleScheduleService
 
     public function current(): ?FlashSale
     {
-        $this->sync();
-
-        return FlashSale::with('products.category')
+        return FlashSale::with(['products' => fn ($query) => $query
+                ->with('category:id,name,slug')
+                ->where('is_active', true)
+                ->latest('products.created_at')
+                ->take(4),
+            ])
             ->where('is_active', true)
             ->where('start_at', '<=', now())
             ->where('end_at', '>=', now())

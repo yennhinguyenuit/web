@@ -193,6 +193,7 @@
 @endauth
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/tracking.js?v=20260525"></script>
 <script src="/assets/js/chatbot.js?v=2026052403"></script>
 <script src="/assets/js/seller-chat.js?v=20260523"></script>
 @stack('scripts')

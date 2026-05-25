@@ -27,7 +27,7 @@
 </div>
 <div class="col-md-4">
     <label class="form-label">Giá trị</label>
-    <input class="form-control" type="number" name="discount_value" value="{{ old('discount_value', $coupon->discount_value ?? '') }}" min="1" step="1000" required>
+    <input class="form-control" type="number" name="discount_value" value="{{ old('discount_value', $coupon->discount_value ?? '') }}" min="1" step="1" required>
 </div>
 <div class="col-md-4">
     <label class="form-label">Đơn tối thiểu</label>

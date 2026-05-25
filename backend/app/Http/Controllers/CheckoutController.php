@@ -96,8 +96,8 @@ class CheckoutController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Áp mã giảm giá thành công.',
-            'product_coupon' => $discounts['product_coupon']?->only(['id', 'code', 'name']),
-            'shipping_coupon' => $discounts['shipping_coupon']?->only(['id', 'code', 'name']),
+            'product_coupon' => $discounts['product_coupon']?->only(['id', 'code', 'name', 'discount_type', 'discount_value']),
+            'shipping_coupon' => $discounts['shipping_coupon']?->only(['id', 'code', 'name', 'discount_type', 'discount_value']),
             'product_discount' => $discounts['product_discount'],
             'shipping_discount' => $discounts['shipping_discount'],
             'discount' => $discounts['discount'],

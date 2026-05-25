@@ -61,6 +61,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/reports/revenue', [ReportController::class, 'revenue'])->name('reports.revenue');
     Route::get('/reports/order-status', [ReportController::class, 'orderStatus'])->name('reports.order-status');
     Route::get('/reports/top-products', [ReportController::class, 'topProducts'])->name('reports.top-products');
+    Route::get('/reports/traffic', [ReportController::class, 'traffic'])->name('reports.traffic');
+    Route::get('/reports/product-clicks', [ReportController::class, 'productClicks'])->name('reports.product-clicks');
 
     Route::get('/chats', [ChatController::class, 'index'])->name('chats.index');
     Route::get('/chats/{customer}/messages', [ChatController::class, 'messages'])->name('chats.messages');

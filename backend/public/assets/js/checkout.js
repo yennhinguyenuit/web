@@ -25,6 +25,23 @@ function money(value) {
     return new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + 'đ';
 }
 
+function discountMoney(value) {
+    const discount = Number(value || 0);
+
+    return discount > 0 ? `-${money(discount)}` : money(0);
+}
+
+function couponDiscountLabel(coupon) {
+    if (!coupon?.discount_type || !coupon?.discount_value) return '';
+
+    const value = Number(coupon.discount_value);
+    if (coupon.discount_type === 'percent') {
+        return ` (-${Number.isInteger(value) ? value : value.toLocaleString('vi-VN')}%)`;
+    }
+
+    return ` (-${money(value)})`;
+}
+
 function selectedShippingMethod() {
     return document.querySelector('input[name="shipping_method"]:checked')?.value || 'standard';
 }
@@ -41,12 +58,12 @@ function totalDiscount() {
 function updateAppliedCoupons(productCoupon, shippingCoupon) {
     if (productCouponLabel) {
         productCouponLabel.hidden = !productCoupon;
-        productCouponLabel.textContent = productCoupon ? `Sản phẩm: ${productCoupon.code}` : '';
+        productCouponLabel.textContent = productCoupon ? `Sản phẩm: ${productCoupon.code}${couponDiscountLabel(productCoupon)}` : '';
     }
 
     if (shippingCouponLabel) {
         shippingCouponLabel.hidden = !shippingCoupon;
-        shippingCouponLabel.textContent = shippingCoupon ? `Freeship: ${shippingCoupon.code}` : '';
+        shippingCouponLabel.textContent = shippingCoupon ? `Freeship: ${shippingCoupon.code}${couponDiscountLabel(shippingCoupon)}` : '';
     }
 
     if (couponAppliedList) {
@@ -64,15 +81,15 @@ function updateCheckoutTotal(serverTotal = null) {
     }
 
     if (checkoutProductDiscount) {
-        checkoutProductDiscount.textContent = money(currentProductDiscount);
+        checkoutProductDiscount.textContent = discountMoney(currentProductDiscount);
     }
 
     if (checkoutShippingDiscount) {
-        checkoutShippingDiscount.textContent = money(currentShippingDiscount);
+        checkoutShippingDiscount.textContent = discountMoney(currentShippingDiscount);
     }
 
     if (checkoutDiscount) {
-        checkoutDiscount.textContent = money(totalDiscount());
+        checkoutDiscount.textContent = discountMoney(totalDiscount());
     }
 
     if (checkoutTotal) {

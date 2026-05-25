@@ -157,5 +157,5 @@
 @endsection
 
 @push('scripts')
-<script src="/assets/js/checkout.js?v=20260523"></script>
+<script src="/assets/js/checkout.js?v=20260525"></script>
 @endpush
