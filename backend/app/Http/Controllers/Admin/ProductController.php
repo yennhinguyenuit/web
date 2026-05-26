@@ -19,9 +19,19 @@ class ProductController extends Controller
     public function index(Request $request): View
     {
         $categoryId = $request->integer('category_id') ?: null;
+        $statusFilter = $request->query('status');
+        $statusFilter = in_array($statusFilter, ['active', 'hidden', 'low_stock'], true) ? $statusFilter : null;
+        $statusLabels = [
+            'active' => 'Sản phẩm đang hiển thị',
+            'hidden' => 'Sản phẩm đang ẩn',
+            'low_stock' => 'Sản phẩm tồn kho thấp',
+        ];
         $categories = Category::withCount('products')->orderBy('name')->get();
         $products = Product::with('category')
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
+            ->when($statusFilter === 'active', fn ($query) => $query->where('is_active', true))
+            ->when($statusFilter === 'hidden', fn ($query) => $query->where('is_active', false))
+            ->when($statusFilter === 'low_stock', fn ($query) => $query->where('stock', '<=', 5))
             ->latest()
             ->paginate(12)
             ->withQueryString();
@@ -31,6 +41,8 @@ class ProductController extends Controller
             'categories' => $categories,
             'selectedCategoryId' => $categoryId,
             'selectedCategory' => $categoryId ? $categories->firstWhere('id', $categoryId) : null,
+            'statusFilter' => $statusFilter,
+            'statusLabel' => $statusFilter ? $statusLabels[$statusFilter] : 'Tất cả sản phẩm',
             'totalProducts' => Product::count(),
             'activeProducts' => Product::where('is_active', true)->count(),
             'hiddenProducts' => Product::where('is_active', false)->count(),
@@ -92,12 +104,25 @@ class ProductController extends Controller
     public function hide(Request $request, Product $product): JsonResponse|RedirectResponse
     {
         $product->update(['is_active' => false]);
+        $product->load('category');
 
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'Đã ẩn sản phẩm.']);
+            return response()->json(['success' => true, 'message' => 'Đã ẩn sản phẩm.', 'product' => $product]);
         }
 
         return back()->with('success', 'Đã ẩn sản phẩm.');
+    }
+
+    public function activate(Request $request, Product $product): JsonResponse|RedirectResponse
+    {
+        $product->update(['is_active' => true]);
+        $product->load('category');
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Đã hiện sản phẩm.', 'product' => $product]);
+        }
+
+        return back()->with('success', 'Đã hiện sản phẩm.');
     }
 
     public function destroy(Request $request, Product $product): JsonResponse|RedirectResponse

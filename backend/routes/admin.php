@@ -21,6 +21,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
     Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
     Route::patch('/products/{product}/hide', [ProductController::class, 'hide'])->name('products.hide');
+    Route::patch('/products/{product}/activate', [ProductController::class, 'activate'])->name('products.activate');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');

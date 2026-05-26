@@ -21,12 +21,35 @@ function productPayload(product) {
     return JSON.stringify(product).replace(/'/g, '&#39;');
 }
 
+function isProductActive(product) {
+    return product.is_active === true || product.is_active === 1 || product.is_active === '1';
+}
+
+function productMatchesCurrentFilter(product) {
+    const currentCategory = productsList?.dataset.currentCategory;
+    const currentStatus = productsList?.dataset.currentStatus;
+    const matchesCategory = !currentCategory || Number(currentCategory) === Number(product.category_id);
+    const active = isProductActive(product);
+    const stock = Number(product.stock || 0);
+
+    let matchesStatus = true;
+    if (currentStatus === 'active') matchesStatus = active;
+    if (currentStatus === 'hidden') matchesStatus = !active;
+    if (currentStatus === 'low_stock') matchesStatus = stock <= 5;
+
+    return matchesCategory && matchesStatus;
+}
+
 function productRow(product) {
     const price = new Intl.NumberFormat('vi-VN').format(product.price) + 'đ';
-    const activeText = product.is_active ? 'Đang hiển thị' : 'Đang ẩn';
-    const activeClass = product.is_active ? 'active' : 'muted';
+    const active = isProductActive(product);
+    const activeText = active ? 'Đang hiển thị' : 'Đang ẩn';
+    const activeClass = active ? 'active' : 'muted';
     const image = product.image || 'https://via.placeholder.com/110';
     const color = product.color || '#800020';
+    const visibilityButton = active
+        ? `<button type="button" class="btn btn-dark product-hide" data-id="${product.id}">Ẩn sản phẩm</button>`
+        : `<button type="button" class="btn btn-dark product-activate" data-id="${product.id}">Hiện sản phẩm</button>`;
 
     return `
         <div class="admin-product-row" id="product-row-${product.id}">
@@ -47,7 +70,7 @@ function productRow(product) {
             </div>
             <div class="admin-product-actions">
                 <button class="btn btn-outline-dark product-edit" data-product='${productPayload(product)}'>Sửa</button>
-                <button class="btn btn-dark product-hide" data-id="${product.id}" ${product.is_active ? '' : 'disabled'}>${product.is_active ? 'Ẩn sản phẩm' : 'Đã ẩn'}</button>
+                ${visibilityButton}
                 <button class="btn btn-outline-danger product-delete" data-id="${product.id}">Xóa</button>
             </div>
         </div>`;
@@ -94,10 +117,39 @@ function bindProductButtons(scope = document) {
             if (!response.ok) return showProductAlert(payload.message || 'Không thể ẩn sản phẩm.', 'danger');
 
             const row = document.getElementById(`product-row-${button.dataset.id}`);
-            row.querySelector('.product-status').innerHTML = '<span class="admin-status-pill muted">Đang ẩn</span>';
-            button.textContent = 'Đã ẩn';
-            button.disabled = true;
+            if (row && payload.product && productMatchesCurrentFilter(payload.product)) {
+                row.outerHTML = productRow(payload.product);
+                bindProductButtons(document.getElementById(`product-row-${button.dataset.id}`));
+            } else {
+                row?.remove();
+            }
             showProductAlert(payload.message || 'Đã ẩn sản phẩm.');
+        };
+    });
+
+    scope.querySelectorAll('.product-activate').forEach((button) => {
+        button.onclick = async () => {
+            if (!confirm('Hiện lại sản phẩm này?')) return;
+            const response = await fetch(`/admin/products/${button.dataset.id}/activate`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json();
+            if (!response.ok) return showProductAlert(payload.message || 'Không thể hiện sản phẩm.', 'danger');
+
+            const row = document.getElementById(`product-row-${button.dataset.id}`);
+            if (row && payload.product && productMatchesCurrentFilter(payload.product)) {
+                row.outerHTML = productRow(payload.product);
+                bindProductButtons(document.getElementById(`product-row-${button.dataset.id}`));
+            } else {
+                row?.remove();
+            }
+            showProductAlert(payload.message || 'Đã hiện sản phẩm.');
         };
     });
 
@@ -145,8 +197,7 @@ productForm?.addEventListener('submit', async (event) => {
     if (!response.ok) return showProductAlert(payload.message || Object.values(payload.errors || {}).flat().join('<br>'), 'danger');
 
     const row = document.getElementById(`product-row-${payload.product.id}`);
-    const currentCategory = productsList?.dataset.currentCategory;
-    const productMatchesFilter = !currentCategory || Number(currentCategory) === Number(payload.product.category_id);
+    const productMatchesFilter = productMatchesCurrentFilter(payload.product);
 
     if (row) {
         if (productMatchesFilter) {

@@ -3,30 +3,41 @@
 @section('title', 'Quản lý sản phẩm')
 
 @section('content')
+@php
+    $statusQuery = $statusFilter ? ['status' => $statusFilter] : [];
+@endphp
 <div class="admin-stat-grid">
-    <div class="admin-stat"><p class="admin-stat-label">Tổng sản phẩm</p><p class="admin-stat-value">{{ number_format($totalProducts) }}</p></div>
-    <div class="admin-stat"><p class="admin-stat-label">Đang hiển thị</p><p class="admin-stat-value">{{ number_format($activeProducts) }}</p></div>
-    <div class="admin-stat"><p class="admin-stat-label">Đang ẩn</p><p class="admin-stat-value text-muted">{{ number_format($hiddenProducts) }}</p></div>
-    <div class="admin-stat"><p class="admin-stat-label">Tồn kho thấp</p><p class="admin-stat-value text-danger">{{ number_format($lowStockProducts) }}</p></div>
+    <a class="admin-stat text-decoration-none {{ $statusFilter === null ? 'border-dark' : '' }}" href="{{ route('admin.products.index') }}">
+        <p class="admin-stat-label">Tổng sản phẩm</p><p class="admin-stat-value">{{ number_format($totalProducts) }}</p>
+    </a>
+    <a class="admin-stat text-decoration-none {{ $statusFilter === 'active' ? 'border-dark' : '' }}" href="{{ route('admin.products.index', ['status' => 'active']) }}">
+        <p class="admin-stat-label">Đang hiển thị</p><p class="admin-stat-value">{{ number_format($activeProducts) }}</p>
+    </a>
+    <a class="admin-stat text-decoration-none {{ $statusFilter === 'hidden' ? 'border-dark' : '' }}" href="{{ route('admin.products.index', ['status' => 'hidden']) }}">
+        <p class="admin-stat-label">Đang ẩn</p><p class="admin-stat-value text-muted">{{ number_format($hiddenProducts) }}</p>
+    </a>
+    <a class="admin-stat text-decoration-none {{ $statusFilter === 'low_stock' ? 'border-dark' : '' }}" href="{{ route('admin.products.index', ['status' => 'low_stock']) }}">
+        <p class="admin-stat-label">Tồn kho thấp</p><p class="admin-stat-value text-danger">{{ number_format($lowStockProducts) }}</p>
+    </a>
 </div>
 
 <div class="admin-card admin-category-filter">
     <div class="admin-category-filter-head">
         <div>
             <h2>Phân loại theo danh mục</h2>
-            <p>{{ $selectedCategory ? 'Đang xem: '.$selectedCategory->name : 'Đang xem tất cả sản phẩm' }}</p>
+            <p>{{ $selectedCategory ? $statusLabel.' trong danh mục '.$selectedCategory->name : 'Đang xem: '.$statusLabel }}</p>
         </div>
-        @if($selectedCategoryId)
+        @if($selectedCategoryId || $statusFilter)
             <a class="btn btn-outline-dark" href="{{ route('admin.products.index') }}">Xem tất cả</a>
         @endif
     </div>
     <div class="admin-category-tabs">
-        <a class="{{ ! $selectedCategoryId ? 'active' : '' }}" href="{{ route('admin.products.index') }}">
+        <a class="{{ ! $selectedCategoryId ? 'active' : '' }}" href="{{ route('admin.products.index', $statusQuery) }}">
             <span>Tất cả</span>
             <strong>{{ number_format($totalProducts) }}</strong>
         </a>
         @foreach($categories as $category)
-            <a class="{{ (int) $selectedCategoryId === $category->id ? 'active' : '' }}" href="{{ route('admin.products.index', ['category_id' => $category->id]) }}">
+            <a class="{{ (int) $selectedCategoryId === $category->id ? 'active' : '' }}" href="{{ route('admin.products.index', array_filter(['category_id' => $category->id, 'status' => $statusFilter])) }}">
                 <span>{{ $category->name }}</span>
                 <strong>{{ number_format($category->products_count) }}</strong>
             </a>
@@ -80,12 +91,12 @@
 
 <div class="admin-list-head">
     <div>
-        <h2>{{ $selectedCategory ? 'Sản phẩm: '.$selectedCategory->name : 'Tất cả sản phẩm' }}</h2>
+        <h2>{{ $selectedCategory ? $statusLabel.': '.$selectedCategory->name : $statusLabel }}</h2>
         <p>{{ number_format($products->total()) }} sản phẩm trong danh sách hiện tại.</p>
     </div>
 </div>
 
-<div id="products-list" class="admin-product-list" data-current-category="{{ $selectedCategoryId }}">
+<div id="products-list" class="admin-product-list" data-current-category="{{ $selectedCategoryId }}" data-current-status="{{ $statusFilter }}">
     @forelse($products as $product)
         <div class="admin-product-row" id="product-row-{{ $product->id }}">
             <img src="{{ $product->image ?: 'https://via.placeholder.com/110' }}" alt="{{ $product->name }}">
@@ -105,7 +116,11 @@
             </div>
             <div class="admin-product-actions">
                 <button class="btn btn-outline-dark product-edit" data-product='@json($product)'>Sửa</button>
-                <button class="btn btn-dark product-hide" data-id="{{ $product->id }}" @disabled(! $product->is_active)>{{ $product->is_active ? 'Ẩn sản phẩm' : 'Đã ẩn' }}</button>
+                @if($product->is_active)
+                    <button type="button" class="btn btn-dark product-hide" data-id="{{ $product->id }}">Ẩn sản phẩm</button>
+                @else
+                    <button type="button" class="btn btn-dark product-activate" data-id="{{ $product->id }}">Hiện sản phẩm</button>
+                @endif
                 <button class="btn btn-outline-danger product-delete" data-id="{{ $product->id }}">Xóa</button>
             </div>
         </div>
@@ -121,5 +136,5 @@
 
 @push('scripts')
 <script src="/assets/js/admin-product-upload.js?v=20260523"></script>
-<script src="/assets/js/admin-products.js?v=20260523"></script>
+<script src="/assets/js/admin-products.js?v=20260526"></script>
 @endpush
