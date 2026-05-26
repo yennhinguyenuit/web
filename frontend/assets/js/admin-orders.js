@@ -18,7 +18,7 @@ function showOrderAlert(message, type = 'success') {
     const alertTarget = getOrderAlert();
 
     if (!alertTarget) {
-        window.alert(message);
+        console.error(message);
         return;
     }
 
@@ -132,11 +132,6 @@ document.querySelectorAll('.order-status-form').forEach((form) => {
 document.querySelectorAll('.cancel-review').forEach((button) => {
     button.addEventListener('click', async () => {
         const decision = button.dataset.decision;
-        const message = decision === 'approved'
-            ? 'Duyệt hủy đơn hàng này?'
-            : 'Từ chối yêu cầu hủy đơn này?';
-
-        if (!confirm(message)) return;
 
         if (!orderCsrfToken) {
             console.error('Cancel review CSRF token is missing.');

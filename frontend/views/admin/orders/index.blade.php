@@ -50,5 +50,5 @@
 @endsection
 
 @push('scripts')
-<script src="/assets/js/admin-orders.js?v=20260523"></script>
+<script src="/assets/js/admin-orders.js?v=2026052602"></script>
 @endpush

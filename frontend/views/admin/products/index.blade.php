@@ -136,5 +136,5 @@
 
 @push('scripts')
 <script src="/assets/js/admin-product-upload.js?v=20260523"></script>
-<script src="/assets/js/admin-products.js?v=20260526"></script>
+<script src="/assets/js/admin-products.js?v=2026052602"></script>
 @endpush

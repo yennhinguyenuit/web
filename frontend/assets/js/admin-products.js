@@ -1,5 +1,5 @@
 const productForm = document.getElementById('product-form');
-const productAlert = document.getElementById('product-alert');
+let productAlert = document.getElementById('product-alert');
 const productReset = document.getElementById('product-reset');
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 const productsList = document.getElementById('products-list');
@@ -8,13 +8,24 @@ if ((productForm || productsList) && !csrfToken) {
     console.error('Admin products CSRF token is missing.');
 }
 
+function getProductAlert() {
+    if (productAlert) return productAlert;
+
+    productAlert = document.createElement('div');
+    document.querySelector('.admin-content')?.prepend(productAlert);
+
+    return productAlert;
+}
+
 function showProductAlert(message, type = 'success') {
-    if (!productAlert) {
-        window.alert(message);
+    const alertTarget = getProductAlert();
+
+    if (!alertTarget) {
+        console.error(message);
         return;
     }
 
-    productAlert.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    alertTarget.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
 }
 
 function productPayload(product) {
@@ -103,7 +114,6 @@ function bindProductButtons(scope = document) {
 
     scope.querySelectorAll('.product-hide').forEach((button) => {
         button.onclick = async () => {
-            if (!confirm('Ẩn sản phẩm này?')) return;
             const response = await fetch(`/admin/products/${button.dataset.id}/hide`, {
                 method: 'PATCH',
                 headers: {
@@ -129,7 +139,6 @@ function bindProductButtons(scope = document) {
 
     scope.querySelectorAll('.product-activate').forEach((button) => {
         button.onclick = async () => {
-            if (!confirm('Hiện lại sản phẩm này?')) return;
             const response = await fetch(`/admin/products/${button.dataset.id}/activate`, {
                 method: 'PATCH',
                 headers: {
@@ -155,7 +164,6 @@ function bindProductButtons(scope = document) {
 
     scope.querySelectorAll('.product-delete').forEach((button) => {
         button.onclick = async () => {
-            if (!confirm('Xóa sản phẩm khỏi danh sách quản trị?')) return;
             const response = await fetch(`/admin/products/${button.dataset.id}`, {
                 method: 'DELETE',
                 headers: {
